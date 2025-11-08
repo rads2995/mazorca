@@ -15,8 +15,8 @@
       "cacheVariables": {
         "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "BUILD_TESTING": "ON",
-        "CMAKE_CXX_FLAGS": "-fsycl -fsycl-targets=amdgcn-amd-amdhsa -Xsycl-target-backend=amdgcn-amd-amdhsa --offload-arch=gfx1010",
+        "BUILD_TESTING": "OFF",
+        "CMAKE_CXX_FLAGS": "-fsycl -fsycl-targets=amd_gpu_gfx1010",
         "CMAKE_C_COMPILER": "icx",
         "CMAKE_CXX_COMPILER": "icpx"
       }
