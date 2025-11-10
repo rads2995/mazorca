@@ -5,116 +5,44 @@
 
 #include <mazorca/mazorca.hpp>
 
-// Array type and data size for this example.
-constexpr size_t array_size = (1 << 16);
-typedef std::array<int, array_size> IntArray;
-
-void VectorAdd1(sycl::queue &q, const IntArray &a, const IntArray &b,
-                IntArray &sum) {
-  sycl::range num_items{a.size()};
-
-  sycl::buffer a_buf(a);
-  sycl::buffer b_buf(b);
-  sycl::buffer sum_buf(sum.data(), num_items);
-
-  auto e = q.submit([&](auto &h) {
-    // Input accessors
-    sycl::accessor a_acc(a_buf, h, sycl::read_only);
-    sycl::accessor b_acc(b_buf, h, sycl::read_only);
-    // Output accessor
-    sycl::accessor sum_acc(sum_buf, h, sycl::write_only, sycl::no_init);
-
-    h.parallel_for(num_items,
-                   [=](auto i) { sum_acc[i] = a_acc[i] + b_acc[i]; });
-  });
-  q.wait();
-}
-
-void VectorAdd2(sycl::queue &q, const IntArray &a, const IntArray &b,
-                IntArray &sum) {
-  sycl::range num_items{a.size()};
-
-  sycl::buffer a_buf(a);
-  sycl::buffer b_buf(b);
-  sycl::buffer sum_buf(sum.data(), num_items);
-
-  auto e = q.submit([&](auto &h) {
-    // Input accessors
-    sycl::accessor a_acc(a_buf, h, sycl::read_only);
-    sycl::accessor b_acc(b_buf, h, sycl::read_only);
-    // Output accessor
-    sycl::accessor sum_acc(sum_buf, h, sycl::write_only, sycl::no_init);
-
-    h.parallel_for(num_items,
-                   [=](auto i) { sum_acc[i] = a_acc[i] + b_acc[i]; });
-  });
-  q.wait();
-}
-
-void InitializeArray(IntArray &a) {
-  for (size_t i = 0; i < a.size(); i++)
-    a[i] = i;
-}
-
 int main() {
-  IntArray a, b, sum;
 
-  InitializeArray(a);
-  InitializeArray(b);
+    sycl::queue q(
+        sycl::cpu_selector_v, 
+        sycl::property::queue::enable_profiling{}
+    );
 
-  sycl::queue q(sycl::cpu_selector_v,
-                sycl::property::queue::enable_profiling{});
-
-  std::cout << "Running on device: "
-            << q.get_device().get_info<sycl::info::device::name>() << "\n";
-  std::cout << "Vector size: " << a.size() << "\n";
-  auto start = std::chrono::steady_clock::now();
-  VectorAdd1(q, a, b, sum);
-  auto end = std::chrono::steady_clock::now();
-  std::cout << "Initial Vector add1 successfully completed on device - took "
-            << (end - start).count() << " nano-secs\n";
-
-  start = std::chrono::steady_clock::now();
-  VectorAdd1(q, a, b, sum);
-  end = std::chrono::steady_clock::now();
-  std::cout << "Second Vector add1 successfully completed on device - took "
-            << (end - start).count() << " nano-secs\n";
-
-  start = std::chrono::steady_clock::now();
-  VectorAdd2(q, a, b, sum);
-  end = std::chrono::steady_clock::now();
-  std::cout << "Initial Vector add2 successfully completed on device - took "
-            << (end - start).count() << " nano-secs\n";
-
-  start = std::chrono::steady_clock::now();
-  VectorAdd2(q, a, b, sum);
-  end = std::chrono::steady_clock::now();
-  std::cout << "Second Vector add2 successfully completed on device - took "
-            << (end - start).count() << " nano-secs\n";
-
-  std::string sycl_source = R"""(
+    std::string sycl_source = R"""(
     #include <sycl/sycl.hpp>
-    
+
     extern "C" SYCL_EXT_ONEAPI_FUNCTION_PROPERTY((
-      sycl::ext::oneapi::experimental::nd_range_kernel<1>))
+        sycl::ext::oneapi::experimental::nd_range_kernel<1>))
     void vec_add(float* in1, float* in2, float* out){
-      size_t id = sycl::ext::oneapi::this_work_item::get_nd_item<1>()
-                  .get_global_linear_id();
-      out[id] = in1[id] + in2[id];
+        size_t id = sycl::ext::oneapi::this_work_item::get_nd_item<1>()
+                    .get_global_linear_id();
+        out[id] = in1[id] + in2[id];
     }
-  )""";
+    )""";
 
-  sycl::queue q_2(sycl::gpu_selector_v,
-                sycl::property::queue::enable_profiling{});
+    if (!q.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
+        std::cout 
+            << "SYCL-RTC not supported for " 
+            << q.get_device().get_info<sycl::info::device::name>() 
+            << '\n';
+    }
 
-  if (q.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
-    std::cout << "SYCL-RTC supported for "
-              << q.get_device().get_info<sycl::info::device::name>() << std::endl;
-  }
+    auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
+        q.get_context(), 
+        sycl::ext::oneapi::experimental::source_language::sycl, 
+        sycl_source
+    );
 
-  auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
-    q_2.get_context(), sycl::ext::oneapi::experimental::source_language::sycl, sycl_source);
+    auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
 
-  auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
-  return 0;
+    if(exec_bundle.ext_oneapi_has_kernel("vec_add")) {
+        std::cout << "SYCL kernel found!" << '\n';
+    }
+
+    return std::to_underlying(mazorca::ReturnCode::valid);
+
 }
