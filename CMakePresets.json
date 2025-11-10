@@ -16,7 +16,7 @@
         "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "BUILD_TESTING": "OFF",
-        "CMAKE_CXX_FLAGS": "-fsycl -fsycl-targets=amd_gpu_gfx1010",
+        "CMAKE_CXX_FLAGS": "-fsycl",
         "CMAKE_C_COMPILER": "icx",
         "CMAKE_CXX_COMPILER": "icpx"
       }

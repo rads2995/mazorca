@@ -62,7 +62,7 @@ int main() {
   InitializeArray(a);
   InitializeArray(b);
 
-  sycl::queue q(sycl::gpu_selector_v,
+  sycl::queue q(sycl::cpu_selector_v,
                 sycl::property::queue::enable_profiling{});
 
   std::cout << "Running on device: "
@@ -92,6 +92,29 @@ int main() {
   std::cout << "Second Vector add2 successfully completed on device - took "
             << (end - start).count() << " nano-secs\n";
 
+  std::string sycl_source = R"""(
+    #include <sycl/sycl.hpp>
+    
+    extern "C" SYCL_EXT_ONEAPI_FUNCTION_PROPERTY((
+      sycl::ext::oneapi::experimental::nd_range_kernel<1>))
+    void vec_add(float* in1, float* in2, float* out){
+      size_t id = sycl::ext::oneapi::this_work_item::get_nd_item<1>()
+                  .get_global_linear_id();
+      out[id] = in1[id] + in2[id];
+    }
+  )""";
 
-    return 0;
+  sycl::queue q_2(sycl::gpu_selector_v,
+                sycl::property::queue::enable_profiling{});
+
+  if (q.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
+    std::cout << "SYCL-RTC supported for "
+              << q.get_device().get_info<sycl::info::device::name>() << std::endl;
+  }
+
+  auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
+    q_2.get_context(), sycl::ext::oneapi::experimental::source_language::sycl, sycl_source);
+
+  auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
+  return 0;
 }
