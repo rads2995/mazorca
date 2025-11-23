@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 4.0.0)
 
 project(mazorca)
 
@@ -37,5 +37,6 @@ add_subdirectory(src)
 add_subdirectory(bin)
 
 if(BUILD_TESTING)
+    include(CTest)
     add_subdirectory(test)
 endif()
