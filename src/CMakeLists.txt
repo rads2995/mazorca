@@ -1,6 +1,7 @@
 find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
 include(cmake/imgui.cmake)
+include(cmake/glslang.cmake)
 
 add_library(mazorca INTERFACE)
 add_library(mazorca::mazorca ALIAS mazorca)
@@ -18,11 +19,12 @@ target_link_libraries(mazorca
         SDL3::SDL3
         OpenGL::OpenGL
         imgui::imgui
+        glslang::glslang
         sycl
 )
 
 install(
-    TARGETS mazorca
+    TARGETS mazorca glslang
     EXPORT mazorcaTargets
     FILE_SET mazorca_headers
 )
