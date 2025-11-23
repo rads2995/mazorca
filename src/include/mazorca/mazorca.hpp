@@ -1,7 +1,6 @@
 #pragma once
 
 #include <sycl/sycl.hpp>
-#include <SDL3/SDL.h>
 
 namespace mazorca {
 

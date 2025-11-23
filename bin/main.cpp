@@ -1,16 +1,16 @@
+#include <mazorca/mazorca.hpp>
+
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 
 #include <sycl/sycl.hpp>
-#include <SDL3/SDL.h>
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_opengl3_loader.h>
+#include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
-
-#include <mazorca/mazorca.hpp>
 
 int main(int argc, char* argv[]) {
 
@@ -158,37 +158,6 @@ int main(int argc, char* argv[]) {
     SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
-    // SDL_Init(SDL_INIT_VIDEO);
-
-    // SDL_Window *window = nullptr;
-    // SDL_Renderer *renderer = nullptr;
-    
-    // SDL_CreateWindowAndRenderer(
-    //     "Hello, World!",
-    //     800, 
-    //     600,
-    //     SDL_WINDOW_RESIZABLE, 
-    //     &window, 
-    //     &renderer
-    // );
-
-    // bool quit = false;
-    // while (!quit) {
-    //     SDL_Event event;
-    //     while (SDL_PollEvent(&event)) {
-    //         if (event.type == SDL_EVENT_QUIT) 
-    //             quit = true;
-    //     }
-        
-    //     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    //     SDL_RenderClear(renderer);
-    //     SDL_RenderPresent(renderer);
-    // }
-
-    // SDL_DestroyRenderer(renderer);
-    // SDL_DestroyWindow(window);
-    // SDL_Quit();
     
     if (argc != 2) {
         return std::to_underlying(mazorca::ReturnCode::invalid);

@@ -1,5 +1,5 @@
-# Required third-party dependencies
 find_package(SDL3 REQUIRED)
+find_package(OpenGL REQUIRED)
 include(cmake/imgui.cmake)
 
 add_library(mazorca INTERFACE)
@@ -16,6 +16,7 @@ target_sources(mazorca
 target_link_libraries(mazorca
     INTERFACE
         SDL3::SDL3
+        OpenGL::OpenGL
         imgui::imgui
         sycl
 )
