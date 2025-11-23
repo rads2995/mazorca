@@ -48,6 +48,6 @@ install(
 )
 
 install(
-    FILES ./cmake/imguiConfig.cmake
+    FILES ./imguiConfig.cmake
     DESTINATION share/cmake/imgui
 )

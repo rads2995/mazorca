@@ -10,20 +10,20 @@ enum class ReturnCode : int {
 };
 
 // Example implementation of SYCL asynchronous exception handler
-void sycl_async_handler(sycl::exception_list exceptions) {
-  for (auto e : exceptions) {
-    try {
-      std::rethrow_exception(e);
-    } catch (sycl::exception const &e) {
-      std::cout 
-        << "Caught asynchronous SYCL exception:\n"
-        << e.what() 
-        << '\n';
+inline void sycl_async_handler(sycl::exception_list exceptions) {
+    for (auto e : exceptions) {
+        try {
+            std::rethrow_exception(e);
+        } catch (sycl::exception const &e) {
+            std::cout 
+            << "Caught asynchronous SYCL exception:\n"
+            << e.what() 
+            << '\n';
+        }
     }
-  }
 };
 
-void check_sycl_device_features(sycl::queue &queue) {
+inline void check_sycl_device_features(sycl::queue &queue) {
     if (!queue.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
     std::cout 
         << "SYCL-RTC is not supported for " 
@@ -31,5 +31,11 @@ void check_sycl_device_features(sycl::queue &queue) {
         << '\n';
     }
 }
+
+class Mazorca {
+public:
+    int run();
+ 
+};
 
 } // namespace mazorca
