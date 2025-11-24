@@ -28,6 +28,11 @@ target_compile_options(mazorca
         -fsycl
 )
 
+target_link_options(mazorca
+    PUBLIC
+        -fsycl
+)
+
 install(
     TARGETS mazorca
     EXPORT mazorcaTargets

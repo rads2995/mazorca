@@ -98,10 +98,6 @@
             ImGui_ImplSDL3_NewFrame();
             ImGui::NewFrame();
 
-            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window)
-                ImGui::ShowDemoWindow(&show_demo_window);
-
             // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
             {
                 static float f = 0.0f;
@@ -137,8 +133,17 @@
 
             // Rendering
             ImGui::Render();
-            glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-            glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+            glViewport(
+                0, 
+                0, 
+                static_cast<int>(io.DisplaySize.x), 
+                static_cast<int>(io.DisplaySize.y)
+            );
+            glClearColor(
+                clear_color.x * clear_color.w, 
+                clear_color.y * clear_color.w, 
+                clear_color.z * clear_color.w, 
+                clear_color.w);
             glClear(GL_COLOR_BUFFER_BIT);
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
             SDL_GL_SwapWindow(window);
