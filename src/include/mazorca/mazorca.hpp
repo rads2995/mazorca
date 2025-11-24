@@ -1,5 +1,7 @@
 #pragma once
 
+#include <filesystem>
+
 #include <sycl/sycl.hpp>
 
 namespace mazorca {
@@ -51,6 +53,8 @@ struct Mazorca {
       sycl_queue(sycl_context, sycl_device, mazorca::sycl_async_handler, sycl::property::queue::enable_profiling{}) {}
 
     int run();
+
+    int create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path);
 };
 
 } // namespace mazorca

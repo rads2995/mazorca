@@ -1,11 +1,54 @@
 #include <mazorca/mazorca.hpp>
 
+#include <fstream>
+#include <string>
+
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_opengl3_loader.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
+#include <sycl/sycl.hpp>
+
+int mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
+
+    std::ifstream kernel_file(kernel_bundle_file_path, std::ios::binary);
+
+    if (!kernel_file) {
+        return std::to_underlying(mazorca::ReturnCode::invalid);
+    }
+
+    // Read SYCL kernel to string for kernel bundle source
+    std::string sycl_source{
+        std::istreambuf_iterator<char>(kernel_file), 
+        std::istreambuf_iterator<char>()
+    };
+
+    // Check if SYCL run-time compilation feature is available for this device
+    // TODO: implement function logic here to return error if not supported!
+    mazorca::check_sycl_device_features(this->sycl_queue);
+
+    // Create surcle bundle for current device
+    auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
+        this->sycl_queue.get_context(), 
+        sycl::ext::oneapi::experimental::source_language::sycl, 
+        sycl_source
+    );
+
+    // Build kernel using run-time compilation (this is expensive!)
+    auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
+
+    // Query the kernels that were compiled for the current device
+    if(exec_bundle.ext_oneapi_has_kernel("vec_add")) {
+        std::cout 
+            << "SYCL kernel found on " 
+            << source_bundle.get_devices()[0].get_info<sycl::info::device::name>() 
+            << '\n';
+    }
+
+    return std::to_underlying(mazorca::ReturnCode::valid);
+}
 
 int mazorca::Mazorca::run() {
 
