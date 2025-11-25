@@ -13,45 +13,24 @@ int main(int argc, char* argv[]) {
     // TODO: this throws if GPU not found..., how to handle that?
     mazorca::Mazorca gpu{sycl::device(sycl::gpu_selector_v)};
 
-    // This starts the GUI application
-    // TODO: the GUI should be separated from Mazorca (GPU kernels)
-    cpu.run();
-    
     // Right now we pass kernels as input arguments
+    // TODO: make this work with a flag to pass kernel bundles
     if (argc != 2) {
         return std::to_underlying(mazorca::ReturnCode::invalid);
     }
 
-    // Input file paths for run-time-compiled kernels
+    // Input file path for run-time JIT-compiled kernel bundles
     std::filesystem::path kernel_file_path(argv[1]);
 
-    cpu.create_kernel_bundle(kernel_file_path);
-
-    // Try a sample kernel for the gpu device to make sure it works!
-    constexpr int n = 10;
-    int *data = sycl::malloc_shared<int>(n + 1, gpu.sycl_queue);
-    std::memset(data, 0, sizeof(*data) * n);
-
-    sycl::event e;
-    for (int i = 1; i < n; i += 2) {
-        e = gpu.sycl_queue.submit([&](sycl::handler &h) {
-        // wait for previous device task
-        e.wait();
-        auto device_task = [=]() { data[i] = data[i - 1] + 1; };
-        h.single_task(device_task);
-        });
-
-        gpu.sycl_queue.submit([&](sycl::handler &h) {
-        // wait for device task to complete
-        e.wait();
-        auto host_task = [=]() { data[i + 1] = data[i] + 1; };
-        h.host_task(host_task);
-        });
+    // Create kernel bundle from input file on the CPU device
+    if (auto result = cpu.create_kernel_bundle(kernel_file_path); !result.has_value()) {
+        return std::to_underlying(mazorca::ReturnCode::invalid);
     }
-    for (int i = 0; i < n; i++)
-        std::cout << i << ": " << data[i] << "\n";
 
-    sycl::free(data, gpu.sycl_queue);
+    // Perform some kernel work on the GPU device
+    if (auto result = cpu.work(); !result.has_value()) {
+        return std::to_underlying(mazorca::ReturnCode::invalid);
+    }
 
     return std::to_underlying(mazorca::ReturnCode::valid);
 }

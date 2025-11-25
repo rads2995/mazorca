@@ -11,12 +11,38 @@
 #include <SDL3/SDL_opengl.h>
 #include <sycl/sycl.hpp>
 
-int mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
+std::expected<void, mazorca::ReturnCode> mazorca::Mazorca::work() {
+    
+    constexpr int n = 1024;
+    auto *data = sycl::malloc_shared<int>(n, this->sycl_queue);
+
+    this->sycl_queue.parallel_for(n, [=](sycl::id<1> idx) {
+        // Initialize each buffer element with its own rank number starting at 0
+        data[idx] = idx;
+    }); // End of the kernel function
+
+    this->sycl_queue.wait();
+
+    for (int i = 0; i < n; ++i) {
+        std::cout 
+            << "data[" 
+            << i 
+            << "] = " 
+            << data[i] 
+            << '\n';
+    }
+
+    sycl::free(data, this->sycl_queue);
+
+    return {};
+}
+
+std::expected<void, mazorca::ReturnCode> mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
 
     std::ifstream kernel_file(kernel_bundle_file_path, std::ios::binary);
 
     if (!kernel_file) {
-        return std::to_underlying(mazorca::ReturnCode::invalid);
+        return std::unexpected(mazorca::ReturnCode::invalid);
     }
 
     // Read SYCL kernel to string for kernel bundle source
@@ -26,10 +52,16 @@ int mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_
     };
 
     // Check if SYCL run-time compilation feature is available for this device
-    // TODO: implement function logic here to return error if not supported!
-    mazorca::check_sycl_device_features(this->sycl_queue);
+    if (!this->sycl_queue.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
+        std::cout 
+            << "SYCL-RTC is not supported for " 
+            << this->sycl_queue.get_device().get_info<sycl::info::device::name>() 
+            << '\n'; 
+        return std::unexpected(mazorca::ReturnCode::invalid);
+    }
 
     // Create surcle bundle for current device
+    // TODO: what is the concrete type instead of auto?
     auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
         this->sycl_queue.get_context(), 
         sycl::ext::oneapi::experimental::source_language::sycl, 
@@ -47,7 +79,7 @@ int mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_
             << '\n';
     }
 
-    return std::to_underlying(mazorca::ReturnCode::valid);
+    return {};
 }
 
 int mazorca::Mazorca::run() {

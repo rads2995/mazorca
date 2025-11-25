@@ -10,18 +10,6 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(mazorca_test)
 
-target_compile_options(mazorca_test
-    PRIVATE
-        ${CXX_HARDENED_FLAGS}
-        -fsycl-targets=amd_gpu_gfx1010
-)
-
-target_link_options(mazorca_test
-    PRIVATE
-        ${LINKER_HARDENED_FLAGS}
-        -fsycl-targets=amd_gpu_gfx1010
-)
-
 target_sources(mazorca_test
     PRIVATE
         test.cpp

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <filesystem>
+#include <expected>
 
 #include <sycl/sycl.hpp>
 
@@ -11,7 +12,7 @@ enum class ReturnCode : int {
     invalid
 };
 
-// Example implementation of SYCL asynchronous exception handler
+// SYCL asynchronous exception handler
 inline void sycl_async_handler(sycl::exception_list exceptions) {
     for (auto e : exceptions) {
         try {
@@ -24,20 +25,6 @@ inline void sycl_async_handler(sycl::exception_list exceptions) {
         }
     }
 };
-
-inline void check_sycl_device_features(sycl::queue &queue) {
-    if (queue.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
-    std::cout 
-        << "SYCL-RTC is supported for " 
-        << queue.get_device().get_info<sycl::info::device::name>() 
-        << '\n';
-    } else {
-    std::cout 
-        << "SYCL-RTC is not supported for " 
-        << queue.get_device().get_info<sycl::info::device::name>() 
-        << '\n'; 
-    }
-}
 
 struct Mazorca {
 
@@ -52,9 +39,11 @@ struct Mazorca {
       sycl_context(sycl_device),
       sycl_queue(sycl_context, sycl_device, mazorca::sycl_async_handler, sycl::property::queue::enable_profiling{}) {}
 
-    int run();
+    [[nodiscard]] int run();
 
-    int create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path);
+    [[nodiscard]] std::expected<void, ReturnCode> work();
+
+    [[nodiscard]] std::expected<void, ReturnCode> create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path);
 };
 
 } // namespace mazorca
