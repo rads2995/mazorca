@@ -27,14 +27,14 @@ target_compile_options(mazorca
     PUBLIC
         ${CXX_HARDENED_FLAGS}
         -fsycl
-        -fsycl-targets=amd_gpu_gfx1010
+        -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
 )
 
 target_link_options(mazorca
     PUBLIC
         ${LINKER_HARDENED_FLAGS}
         -fsycl
-        -fsycl-targets=amd_gpu_gfx1010
+        -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
 )
 
 install(

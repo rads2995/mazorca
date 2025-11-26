@@ -28,7 +28,7 @@ int main(int argc, char* argv[]) {
     }
 
     // Perform some kernel work on the GPU device
-    if (auto result = cpu.work(); !result.has_value()) {
+    if (auto result = gpu.work(); !result.has_value()) {
         return std::to_underlying(mazorca::ReturnCode::invalid);
     }
 

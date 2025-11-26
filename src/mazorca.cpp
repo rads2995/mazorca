@@ -17,21 +17,8 @@ std::expected<void, mazorca::ReturnCode> mazorca::Mazorca::work() {
     auto *data = sycl::malloc_shared<int>(n, this->sycl_queue);
 
     this->sycl_queue.parallel_for(n, [=](sycl::id<1> idx) {
-        // Initialize each buffer element with its own rank number starting at 0
         data[idx] = idx;
-    }); // End of the kernel function
-
-    this->sycl_queue.wait();
-
-    for (int i = 0; i < n; ++i) {
-        std::cout 
-            << "data[" 
-            << i 
-            << "] = " 
-            << data[i] 
-            << '\n';
-    }
-
+    }).wait();
     sycl::free(data, this->sycl_queue);
 
     return {};

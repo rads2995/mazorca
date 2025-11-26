@@ -1,3 +1,5 @@
+// This is a kernel bundle to be compiled at run-time
+
 #include <sycl/sycl.hpp>
 
 extern "C" SYCL_EXT_ONEAPI_FUNCTION_PROPERTY((
