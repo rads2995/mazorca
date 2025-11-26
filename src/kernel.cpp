@@ -3,18 +3,41 @@
 #include <fstream>
 #include <string>
 #include <cstdint>
+#include <vector>
 
 #include <sycl/sycl.hpp>
 
 std::expected<void, mazorca::error_code> mazorca::kernel::work() {
-    
-    constexpr int n = 1024;
-    std::uint64_t *data = sycl::malloc_shared<std::uint64_t>(n, this->sycl_queue);
 
-    this->sycl_queue.parallel_for(n, [=](sycl::id<1> idx) {
-        data[idx] = idx;
+    constexpr int size = 10;
+
+    // Create allocator for device associated with q
+    sycl::usm_allocator<std::uint64_t, sycl::usm::alloc::host> host_allocator(this->sycl_queue);
+    
+    // Create std vectors with the allocator
+    std::vector<std::uint64_t, sycl::usm_allocator<std::uint64_t, sycl::usm::alloc::host>> 
+    a(size, host_allocator), b(size, host_allocator), c(size, host_allocator);
+
+    // Get pointer to vector data for access in kernel
+    auto A = a.data();
+    auto B = b.data();
+    auto C = c.data();
+
+    for (std::size_t i = 0; i < size; i++) {
+        a[i] = i;
+        b[i] = i;
+        c[i] = i;
+    }
+
+    this->sycl_queue.submit([&](sycl::handler &h) {
+        h.parallel_for(sycl::range<1>(size), [=](sycl::id<1> idx) { 
+            C[idx] = A[idx] + B[idx]; }
+        );
     }).wait();
-    sycl::free(data, this->sycl_queue);
+
+    for (std::size_t i = 0; i < size; i++) {
+        std::cout << c[i] << std::endl;
+    }
 
     return {};
 }

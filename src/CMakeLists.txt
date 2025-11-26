@@ -1,6 +1,8 @@
+include(cmake/imgui.cmake)
+include(cmake/slang.cmake)
+
 find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
-include(cmake/imgui.cmake)
 
 add_library(mazorca STATIC)
 add_library(mazorca::mazorca ALIAS mazorca)
@@ -19,6 +21,7 @@ target_sources(mazorca
 target_link_libraries(mazorca
     PRIVATE
         imgui::imgui
+        slang
         SDL3::SDL3
         OpenGL::OpenGL
     PUBLIC
