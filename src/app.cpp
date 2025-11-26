@@ -1,80 +1,18 @@
 #include <mazorca/mazorca.hpp>
 
-#include <fstream>
-#include <string>
-
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <backends/imgui_impl_opengl3_loader.h>
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>
-#include <sycl/sycl.hpp>
 
-std::expected<void, mazorca::ReturnCode> mazorca::Mazorca::work() {
-    
-    constexpr int n = 1024;
-    auto *data = sycl::malloc_shared<int>(n, this->sycl_queue);
-
-    this->sycl_queue.parallel_for(n, [=](sycl::id<1> idx) {
-        data[idx] = idx;
-    }).wait();
-    sycl::free(data, this->sycl_queue);
-
-    return {};
-}
-
-std::expected<void, mazorca::ReturnCode> mazorca::Mazorca::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
-
-    std::ifstream kernel_file(kernel_bundle_file_path, std::ios::binary);
-
-    if (!kernel_file) {
-        return std::unexpected(mazorca::ReturnCode::invalid);
-    }
-
-    // Read SYCL kernel to string for kernel bundle source
-    std::string sycl_source{
-        std::istreambuf_iterator<char>(kernel_file), 
-        std::istreambuf_iterator<char>()
-    };
-
-    // Check if SYCL run-time compilation feature is available for this device
-    if (!this->sycl_queue.get_device().ext_oneapi_can_compile(sycl::ext::oneapi::experimental::source_language::sycl)) {
-        std::cout 
-            << "SYCL-RTC is not supported for " 
-            << this->sycl_queue.get_device().get_info<sycl::info::device::name>() 
-            << '\n'; 
-        return std::unexpected(mazorca::ReturnCode::invalid);
-    }
-
-    // Create surcle bundle for current device
-    // TODO: what is the concrete type instead of auto?
-    auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
-        this->sycl_queue.get_context(), 
-        sycl::ext::oneapi::experimental::source_language::sycl, 
-        sycl_source
-    );
-
-    // Build kernel using run-time compilation (this is expensive!)
-    auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
-
-    // Query the kernels that were compiled for the current device
-    if(exec_bundle.ext_oneapi_has_kernel("vec_add")) {
-        std::cout 
-            << "SYCL kernel found on " 
-            << source_bundle.get_devices()[0].get_info<sycl::info::device::name>() 
-            << '\n';
-    }
-
-    return {};
-}
-
-int mazorca::Mazorca::run() {
+std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         std::cout << "Error: SDL_Init(): " << SDL_GetError() << '\n';
-        return std::to_underlying(mazorca::ReturnCode::invalid);
+        return std::unexpected(mazorca::error_code::invalid);
     }
 
     // OpenGL Version 4.6
@@ -91,21 +29,21 @@ int mazorca::Mazorca::run() {
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     SDL_Window* window = SDL_CreateWindow(
-        "Mazorca", 
+        "mazorca", 
         static_cast<int>(1920 * main_scale), 
         static_cast<int>(1080 * main_scale), 
         window_flags
     );
-    
+
     if (window == nullptr) {
         std::cout << "Error: SDL_CreateWindow(): " << SDL_GetError() << '\n';
-        return std::to_underlying(mazorca::ReturnCode::invalid);
+        return std::unexpected(mazorca::error_code::invalid);
     }
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
         std::cout << "Error: SDL_GL_CreateContext(): " << SDL_GetError() << '\n';
-        return std::to_underlying(mazorca::ReturnCode::invalid);
+        return std::unexpected(mazorca::error_code::invalid);
     }
     
     SDL_GL_MakeCurrent(window, gl_context);
@@ -134,8 +72,6 @@ int mazorca::Mazorca::run() {
     ImGui_ImplOpenGL3_Init(glsl_version);
     
     // Our state
-    bool show_demo_window = true;
-    bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
@@ -204,5 +140,5 @@ int mazorca::Mazorca::run() {
     SDL_DestroyWindow(window);
     SDL_Quit();
     
-    return std::to_underlying(mazorca::ReturnCode::valid);
+    return {};
 }

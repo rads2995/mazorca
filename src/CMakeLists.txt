@@ -12,7 +12,8 @@ target_sources(mazorca
         BASE_DIRS ./include
         FILES include/mazorca/mazorca.hpp
     PRIVATE
-        mazorca.cpp
+        kernel.cpp
+        app.cpp
 )
 
 target_link_libraries(mazorca
