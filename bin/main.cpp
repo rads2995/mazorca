@@ -39,4 +39,7 @@ int main(int argc, char* argv[]) {
     if (auto result = gpu.work(); !result.has_value()) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
+
+    mazorca::compiler compiler;
+    compiler.test();
 }

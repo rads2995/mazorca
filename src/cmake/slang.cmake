@@ -7,5 +7,7 @@ FetchContent_Declare(
     slang
     GIT_REPOSITORY https://github.com/shader-slang/slang.git
     GIT_TAG        d022f0bd1320bd07c9fcc6af57afdd0dce79e92f # v2025.23.1
+    GIT_SHALLOW    TRUE
+    GIT_PROGRESS   TRUE
 )
 FetchContent_MakeAvailable(slang)
