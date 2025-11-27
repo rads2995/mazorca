@@ -6,10 +6,10 @@
 
 int main(int argc, char* argv[]) {
 
-    // Create a kernel using the CPU device
+    // Create a kernel object using the CPU device
     mazorca::kernel cpu{sycl::device(sycl::cpu_selector_v)};
 
-    // Create a kernel using the GPU device
+    // Create a kernel object using the GPU device
     // TODO: this throws if GPU not found..., how to handle that?
     mazorca::kernel gpu{sycl::device(sycl::gpu_selector_v)};
 
@@ -17,12 +17,15 @@ int main(int argc, char* argv[]) {
     mazorca::app app;
 
     // Run mazorca's GUI interface
+    // Note: this app method performs compilation of shaders
     if (auto result = app.run(); !result.has_value()) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
 
+    // TODO: anything below is proof of concept
+    // Ideally, flags should be parsed and inputs passed to the app object
+    
     // Right now we pass the kernel bundle as input arguments
-    // TODO: make this work with a flag to pass kernel bundles
     if (argc != 2) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
@@ -39,7 +42,4 @@ int main(int argc, char* argv[]) {
     if (auto result = gpu.work(); !result.has_value()) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
-
-    mazorca::compiler compiler;
-    compiler.test();
 }

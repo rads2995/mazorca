@@ -1,3 +1,5 @@
+// Example slang shader to be compiled at run-time
+
 // hello_world.slang
 StructuredBuffer<float> buffer0;
 StructuredBuffer<float> buffer1;

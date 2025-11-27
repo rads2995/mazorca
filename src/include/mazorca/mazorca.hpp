@@ -48,9 +48,4 @@ struct app {
     [[nodiscard]] std::expected<void, error_code> run();
 };
 
-struct compiler {
-
-    int test();
-};
-
 } // namespace mazorca

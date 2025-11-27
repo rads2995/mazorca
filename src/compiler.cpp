@@ -1,6 +1,7 @@
-#include <mazorca/mazorca.hpp>
+#include "compiler.hpp"
 
 #include <array>
+#include <iostream>
 
 #include <slang.h>
 #include <slang-com-ptr.h>
@@ -14,7 +15,6 @@ const char* shortestShader =
 "{"
 "    result[threadId.x] = threadId.x;"
 "}";
-
 
 int mazorca::compiler::test() {
 

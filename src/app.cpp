@@ -1,4 +1,5 @@
 #include <mazorca/mazorca.hpp>
+#include "compiler.hpp"
 
 #include <imgui.h>
 #include <backends/imgui_impl_sdl3.h>
@@ -9,6 +10,10 @@
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
+    // Test run-time compilation of example shader
+    mazorca::compiler compiler;
+    compiler.test();
+    
     // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         std::cout << "Error: SDL_Init(): " << SDL_GetError() << '\n';

@@ -1,4 +1,4 @@
-// This is a kernel bundle to be compiled at run-time
+// This is a SYCL kernel bundle to be compiled at run-time
 
 #include <sycl/sycl.hpp>
 
