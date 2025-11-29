@@ -16,7 +16,6 @@ target_sources(mazorca
     PRIVATE
         kernel.cpp
         app.cpp
-        compiler.cpp
 )
 
 target_link_libraries(mazorca

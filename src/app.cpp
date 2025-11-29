@@ -11,9 +11,11 @@
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Test run-time compilation of example shader
-    mazorca::compiler compiler;
-    compiler.test();
-    
+    auto result = mazorca::compile_shader();
+    if (!result.has_value()) {
+        return std::unexpected(mazorca::error_code::invalid);
+    }
+
     // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         std::cout << "Error: SDL_Init(): " << SDL_GetError() << '\n';

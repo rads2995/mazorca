@@ -1,11 +1,37 @@
 #include <mazorca/mazorca.hpp>
 
+#include <unistd.h>
 #include <filesystem>
 
 #include <sycl/sycl.hpp>
 
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
 
+    // Filesystem path for SYCL-RTC kernel bundle
+    std::filesystem::path kernel_bundle_path;
+
+    // Filesystem path for JIT-compiled shaders
+    std::filesystem::path shader_path;
+
+    int option;
+    while ((option = getopt(argc, argv, "k:h")) != -1) {
+        switch (option) {
+            case 'k':
+                kernel_bundle_path.assign(optarg);
+                if (!kernel_bundle_path.has_filename()) {
+                    std::cout
+                        << "Invalid file type for SYCL-RTC kernel bundle: "
+                        << kernel_bundle_path
+                        << '\n';
+                    return std::to_underlying(mazorca::error_code::invalid);
+                }
+                break;
+            case 'h':
+                // TODO: print a help menu detailing flags above
+                break;
+        }
+    }
+    
     // Create a kernel object using the CPU device
     mazorca::kernel cpu{sycl::device(sycl::cpu_selector_v)};
 
@@ -22,20 +48,11 @@ int main(int argc, char* argv[]) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
 
-    // TODO: anything below is proof of concept
-    // Ideally, flags should be parsed and inputs passed to the app object
-    
-    // Right now we pass the kernel bundle as input arguments
-    if (argc != 2) {
-        return std::to_underlying(mazorca::error_code::invalid);
-    }
-
-    // Input file path for run-time JIT-compiled kernel bundles
-    std::filesystem::path kernel_file_path(argv[1]);
-
     // Create kernel bundle from input file on the CPU device
-    if (auto result = cpu.create_kernel_bundle(kernel_file_path); !result.has_value()) {
-        return std::to_underlying(mazorca::error_code::invalid);
+    if (!kernel_bundle_path.empty()) {
+        if (auto result = cpu.create_kernel_bundle(kernel_bundle_path); !result.has_value()) {
+            return std::to_underlying(mazorca::error_code::invalid);
+        }
     }
 
     // Perform some kernel work on the GPU device
