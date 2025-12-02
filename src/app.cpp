@@ -1,18 +1,16 @@
 #include <mazorca/mazorca.hpp>
 #include "compiler.hpp"
 
-#include <imgui.h>
+#include <SDL3/SDL.h>
+#include <glad/glad.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_opengl3.h>
-#include <backends/imgui_impl_opengl3_loader.h>
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_opengl.h>
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Test run-time compilation of example shader
-    auto result = mazorca::compile_shader();
-    if (!result.has_value()) {
+    auto spirv_code = mazorca::compile_shader();
+    if (!spirv_code.has_value()) {
         return std::unexpected(mazorca::error_code::invalid);
     }
 
@@ -36,7 +34,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
     SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     SDL_Window* window = SDL_CreateWindow(
-        "mazorca", 
+        "mazorca",
         static_cast<int>(1920 * main_scale), 
         static_cast<int>(1080 * main_scale), 
         window_flags
@@ -57,6 +55,8 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     SDL_GL_SetSwapInterval(1); // Enable vsync
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
+
+    gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
 
     // Setup ImGui context
     IMGUI_CHECKVERSION();
@@ -80,6 +80,45 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     
     // Our state
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    
+    // Create the shader object
+    GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
+
+    // Load the SPIR-V module into the shader object
+    glShaderBinary(
+        1, 
+        &shader,
+        GL_SHADER_BINARY_FORMAT_SPIR_V,
+        spirv_code.value()->getBufferPointer(), 
+        static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+    );
+
+    glSpecializeShader(
+        shader,
+        "main",
+        0,
+        nullptr,
+        nullptr
+    );
+
+    // This will now return FALSE
+    GLint status;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status) {
+        std::cout << "ok?" << std::endl;
+    } else {
+        std::cout << "not ok :(" << std::endl;
+    }
+
+    // This should now return TRUE
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+
+    // Create a program, attach our shader to it, and link
+    GLuint program = glCreateProgram();
+
+    glAttachShader(program, shader);
+
+    glLinkProgram(program);
 
     // Main loop
     bool done = false;

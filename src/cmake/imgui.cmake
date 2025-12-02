@@ -26,7 +26,6 @@ target_sources(imgui
             ${imgui_SOURCE_DIR}/imstb_truetype.h
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.h
             ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.h
-            ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3_loader.h
     PRIVATE
         ${imgui_SOURCE_DIR}/imgui.cpp
         ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -34,21 +33,4 @@ target_sources(imgui
         ${imgui_SOURCE_DIR}/imgui_widgets.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
-)
-
-install(
-    TARGETS imgui
-    EXPORT imguiTargets
-    FILE_SET imgui_headers
-)
-
-install(
-    EXPORT imguiTargets
-    DESTINATION share/cmake/imgui
-    NAMESPACE imgui::
-)
-
-install(
-    FILES ./imguiConfig.cmake
-    DESTINATION share/cmake/imgui
 )

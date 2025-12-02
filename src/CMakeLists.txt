@@ -1,5 +1,6 @@
 include(cmake/imgui.cmake)
 include(cmake/slang.cmake)
+add_subdirectory(glad)
 
 find_package(SDL3 REQUIRED)
 find_package(OpenGL REQUIRED)
@@ -20,11 +21,12 @@ target_sources(mazorca
 
 target_link_libraries(mazorca
     PRIVATE
-        imgui::imgui
-        slang
+        $<BUILD_INTERFACE:imgui::imgui>
+        $<BUILD_INTERFACE:glad::glad>
+        $<BUILD_INTERFACE:slang>
+    PUBLIC
         SDL3::SDL3
         OpenGL::OpenGL
-    PUBLIC
 )
 
 target_compile_options(mazorca

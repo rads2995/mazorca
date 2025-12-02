@@ -21,10 +21,7 @@ const char* shortestShader =
 
     // Create global session
     Slang::ComPtr<slang::IGlobalSession> globalSession;
-    SlangGlobalSessionDesc desc{
-        .enableGLSL = true
-    };
-    slang::createGlobalSession(&desc, globalSession.writeRef());
+    slang::createGlobalSession(globalSession.writeRef());
 
     // List of enabled compilation targets
     slang::TargetDesc targetDesc = {
