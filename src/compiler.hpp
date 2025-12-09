@@ -1,6 +1,9 @@
+#pragma once
+
 #include <array>
 #include <expected>
 #include <iostream>
+#include <fstream>
 
 #include <slang.h>
 #include <slang-com-ptr.h>
@@ -8,16 +11,19 @@
 
 namespace mazorca {
 
-const char* shortestShader =
-"RWStructuredBuffer<float> result;"
-"[shader(\"compute\")]"
-"[numthreads(1,1,1)]"
-"void computeMain(uint3 threadId : SV_DispatchThreadID)"
-"{"
-"    result[threadId.x] = threadId.x;"
-"}";
+[[nodiscard]] inline std::expected<Slang::ComPtr<slang::IBlob>, error_code> compile_shader(std::filesystem::path& shader_file_path) {
 
-[[nodiscard]] inline std::expected<Slang::ComPtr<slang::IBlob>, error_code> compile_shader() {
+    std::ifstream shader_file(shader_file_path, std::ios::binary);
+
+    if (!shader_file) {
+        return std::unexpected(error_code::invalid);
+    }
+
+    // Read shader source to string for Slang shader compiler
+    std::string shader_source{
+        std::istreambuf_iterator<char>(shader_file), 
+        std::istreambuf_iterator<char>()
+    };    
 
     // Create global session
     Slang::ComPtr<slang::IGlobalSession> globalSession;
@@ -56,10 +62,10 @@ const char* shortestShader =
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         slangModule = session->loadModuleFromSourceString(
-            "shortest",                 // Module name
-            "shortest.slang",           // Module path
-            shortestShader,             // Shader source code
-            diagnosticsBlob.writeRef()  // Optional diagnostic container
+            shader_file_path.stem().c_str(),        // Module name
+            shader_file_path.filename().c_str(),    // Module path
+            shader_source.c_str(),                  // Shader source code
+            diagnosticsBlob.writeRef()              // Optional diagnostic container
         );
         if (diagnosticsBlob != nullptr) {
             std::cout 
@@ -103,7 +109,7 @@ const char* shortestShader =
                 << '\n';
         }
         if (SLANG_FAILED(result))
-            return std::unexpected(error_code::invalid);;
+            return std::unexpected(error_code::invalid);
     }
 
     // Link

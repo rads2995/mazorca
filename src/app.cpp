@@ -131,81 +131,107 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         }
 
         {
-            ImGui::Begin("Shader Compilation");
+            ImGui::Begin("Shader Runtime Compilation");
             
+            static std::array<char, 256> input_shader_file_path {""};
             static std::string shader_compiler_status_message {"OK"};
             
+            ImGui::Text("File path to shader file: ");
+            ImGui::SameLine();
+            ImGui::InputText(
+                "", 
+                input_shader_file_path.data(), 
+                input_shader_file_path.size()
+            );
+
             if (ImGui::Button("Compile shaders")) {
                 
-                auto spirv_code = mazorca::compile_shader();
-                if (!spirv_code.has_value()) {
-                    shader_compiler_status_message = "Failed to compile shaders!";
+                std::filesystem::path shader_file_path{input_shader_file_path.data()}; 
+               
+                if (!shader_file_path.empty()) {
+                    auto spirv_code = mazorca::compile_shader(shader_file_path);
+                    if (!spirv_code.has_value()) {
+                        shader_compiler_status_message = "Failed to compile shaders!";
+                    } else {
+                        
+                        // Create the shader object
+                        GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
+
+                        // Load the SPIR-V module into the shader object
+                        glShaderBinary(
+                            1, 
+                            &shader,
+                            GL_SHADER_BINARY_FORMAT_SPIR_V,
+                            spirv_code.value()->getBufferPointer(), 
+                            static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+                        );
+
+                        glSpecializeShader(
+                            shader,
+                            "main",
+                            0,
+                            nullptr,
+                            nullptr
+                        );
+
+                        // This should now return TRUE
+                        GLint status;
+                        glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+                        if (!status) {
+                            shader_compiler_status_message = "Failed to load SPIR-V module!";
+                        }
+
+                        // Create a program, attach our shader to it, and link
+                        GLuint program = glCreateProgram();
+
+                        glAttachShader(program, shader);
+
+                        glLinkProgram(program);
+
+                        glGetShaderiv(shader, GL_LINK_STATUS, &status);
+                        if (!status) {
+                            shader_compiler_status_message = "Failed to link SPIR-V module!";
+                        }
+
+                        float input0[128], input1[128], output[128];
+                        for (int i = 0; i < 128; ++i) {
+                            input0[i] = 10.f;
+                            input1[i] = 10.f;
+                            output[i] = 0.f;
+                        }
+
+                        GLuint buffers[3];
+                        glGenBuffers(3, buffers);
+
+                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[0]);
+                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, input0, GL_DYNAMIC_COPY);
+                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, buffers[0]);
+
+                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[1]);
+                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, input1, GL_DYNAMIC_COPY);
+                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffers[1]);
+
+                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[2]);
+                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, output, GL_DYNAMIC_COPY);
+                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, buffers[2]);
+
+                        glUseProgram(program);
+                        glDispatchCompute(128, 1, 1);
+                        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+                        // Read from result buffer
+                        float* ptr = static_cast<float*>(glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float) * 128, GL_MAP_READ_BIT));
+                        for (int i = 0; i < 128; ++i)
+                            std::cout << ptr[i] << " ";
+                        std::cout << std::endl;
+                        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+
+                        shader_compiler_status_message = "Shaders compiled successfully!";
+                    }
+
                 } else {
-                    shader_compiler_status_message = "Shaders compiled successfully!";
+                    shader_compiler_status_message = "File path to shader file is empty!";
                 }
-
-                // Create the shader object
-                GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
-
-                // Load the SPIR-V module into the shader object
-                glShaderBinary(
-                    1, 
-                    &shader,
-                    GL_SHADER_BINARY_FORMAT_SPIR_V,
-                    spirv_code.value()->getBufferPointer(), 
-                    static_cast<GLsizei>(spirv_code.value()->getBufferSize())
-                );
-
-                glSpecializeShader(
-                    shader,
-                    "main",
-                    0,
-                    nullptr,
-                    nullptr
-                );
-
-                // This will now return FALSE
-                GLint status;
-                glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-                if (status) {
-                    std::cout << "ok!" << std::endl;
-                } else {
-                    std::cout << "not ok :(" << std::endl;
-                }
-
-                // This should now return TRUE
-                glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-
-                // Create a program, attach our shader to it, and link
-                GLuint program = glCreateProgram();
-
-                glAttachShader(program, shader);
-
-                glLinkProgram(program);
-
-                glGetShaderiv(shader, GL_LINK_STATUS, &status);
-                if (status) {
-                    std::cout << "ok!" << std::endl;
-                } else {
-                    std::cout << "not ok :(" << std::endl;
-                }
-
-                GLuint resultBuffer = 0;
-                glGenBuffers(1, &resultBuffer);
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, resultBuffer);
-                glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 1024, nullptr, GL_DYNAMIC_COPY);
-                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, resultBuffer);
-
-                glUseProgram(program);
-                glDispatchCompute(128, 1, 1);
-                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-                // DEBUG READ
-                float* ptr = (float*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float) * 128, GL_MAP_READ_BIT);
-                for (int i = 0; i < 128; ++i)
-                    std::cout << ptr[i] << " ";
-                std::cout << std::endl;
-                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
             }
             
             ImGui::Text("Status: %s", shader_compiler_status_message.c_str());
