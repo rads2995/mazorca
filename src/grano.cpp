@@ -7,7 +7,7 @@
 
 #include <sycl/sycl.hpp>
 
-std::expected<void, mazorca::error_code> mazorca::kernel::work() {
+std::expected<void, mazorca::error_code> mazorca::grano::work() {
 
     constexpr int size = 10;
 
@@ -42,7 +42,7 @@ std::expected<void, mazorca::error_code> mazorca::kernel::work() {
     return {};
 }
 
-std::expected<void, mazorca::error_code> mazorca::kernel::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
+std::expected<void, mazorca::error_code> mazorca::grano::create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path) {
 
     std::ifstream kernel_file(kernel_bundle_file_path, std::ios::binary);
 

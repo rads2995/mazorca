@@ -2,61 +2,35 @@
 
 #include <unistd.h>
 #include <filesystem>
+#include <print>
 
 #include <sycl/sycl.hpp>
 
-int main(int argc, char** argv) {
+int main() {
 
-    // Filesystem path for SYCL-RTC kernel bundle
-    std::filesystem::path kernel_bundle_path;
+    // Create a SYCL device object
+    sycl::device sycl_device;
 
-    // Filesystem path for JIT-compiled shaders
-    std::filesystem::path shader_path;
-
-    int option;
-    while ((option = getopt(argc, argv, "k:h")) != -1) {
-        switch (option) {
-            case 'k':
-                kernel_bundle_path.assign(optarg);
-                if (!kernel_bundle_path.has_filename()) {
-                    std::cout
-                        << "Invalid file type for SYCL-RTC kernel bundle: "
-                        << kernel_bundle_path
-                        << '\n';
-                    return std::to_underlying(mazorca::error_code::invalid);
-                }
-                break;
-            case 'h':
-                // TODO: print a help menu detailing flags above
-                break;
-        }
+    // Default SYCL device to CPU if GPU is not available
+    // TODO: future SYCL versions will avoid throwing exceptions
+    try {
+        sycl_device = sycl::device(sycl::gpu_selector_v);
+    } catch (const sycl::exception& e) {
+        std::println(
+            "Cannot select GPU:\n{}\nUsing CPU device instead.", 
+            e.what()
+        );
+        sycl_device = sycl::device(sycl::cpu_selector_v);
     }
-    
-    // Create a kernel object using the CPU device
-    mazorca::kernel cpu{sycl::device(sycl::cpu_selector_v)};
 
-    // Create a kernel object using the GPU device
-    // TODO: this throws if GPU not found..., how to handle that?
-    mazorca::kernel gpu{sycl::device(sycl::gpu_selector_v)};
+    // Create mazorca grano object from single SYCL device
+    mazorca::grano grano{sycl_device};
 
-    // Create app GUI
-    mazorca::app app;
+    // Create app GUI object from grano object
+    mazorca::app app(grano);
 
     // Run mazorca's GUI interface
-    // Note: this app method performs compilation of shaders
     if (auto result = app.run(); !result.has_value()) {
-        return std::to_underlying(mazorca::error_code::invalid);
-    }
-
-    // Create kernel bundle from input file on the CPU device
-    if (!kernel_bundle_path.empty()) {
-        if (auto result = cpu.create_kernel_bundle(kernel_bundle_path); !result.has_value()) {
-            return std::to_underlying(mazorca::error_code::invalid);
-        }
-    }
-
-    // Perform some kernel work on the GPU device
-    if (auto result = gpu.work(); !result.has_value()) {
         return std::to_underlying(mazorca::error_code::invalid);
     }
 }

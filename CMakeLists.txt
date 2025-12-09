@@ -2,8 +2,10 @@ cmake_minimum_required(VERSION 4.0.0)
 
 project(mazorca)
 
-# Compiler hardened options
-set(CXX_HARDENED_FLAGS
+# C++ compiler options
+set(CXX_COMPILER_FLAGS
+    -fsycl
+    -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
     -O2 
     -Wall 
     -Wformat 
@@ -23,8 +25,10 @@ set(CXX_HARDENED_FLAGS
     -ftrivial-auto-var-init=zero
 )
 
-# Linker hardened options
-set(LINKER_HARDENED_FLAGS
+# C++ linker options
+set(CXX_LINKER_FLAGS
+    -fsycl
+    -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
     -Wl,-z,nodlopen 
     -Wl,-z,noexecstack
     -Wl,-z,relro 

@@ -15,15 +15,15 @@ target_sources(mazorca
         BASE_DIRS ./include
         FILES include/mazorca/mazorca.hpp
     PRIVATE
-        kernel.cpp
+        grano.cpp
         app.cpp
 )
 
 target_link_libraries(mazorca
     PRIVATE
-        $<BUILD_INTERFACE:imgui::imgui>
-        $<BUILD_INTERFACE:glad::glad>
-        $<BUILD_INTERFACE:slang>
+        $<BUILD_LOCAL_INTERFACE:imgui::imgui>
+        $<BUILD_LOCAL_INTERFACE:glad::glad>
+        $<BUILD_LOCAL_INTERFACE:slang>
     PUBLIC
         SDL3::SDL3
         OpenGL::OpenGL
@@ -31,16 +31,12 @@ target_link_libraries(mazorca
 
 target_compile_options(mazorca
     PUBLIC
-        ${CXX_HARDENED_FLAGS}
-        -fsycl
-        -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
+        ${CXX_COMPILER_FLAGS}
 )
 
 target_link_options(mazorca
     PUBLIC
-        ${LINKER_HARDENED_FLAGS}
-        -fsycl
-        -fsycl-targets=spir64_x86_64,amd_gpu_gfx1010
+        ${CXX_LINKER_FLAGS}
 )
 
 install(

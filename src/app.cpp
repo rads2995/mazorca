@@ -8,15 +8,9 @@
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
-    // Test run-time compilation of example shader
-    auto spirv_code = mazorca::compile_shader();
-    if (!spirv_code.has_value()) {
-        return std::unexpected(mazorca::error_code::invalid);
-    }
-
     // Initialize the SDL library
-    if (!SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
-        std::cout << "Error: SDL_Init(): " << SDL_GetError() << '\n';
+    if (!SDL_Init(SDL_INIT_VIDEO)) {
+        std::println("Error: SDL_Init(): {}", SDL_GetError());
         return std::unexpected(mazorca::error_code::invalid);
     }
 
@@ -56,14 +50,13 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 
-    gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress);
+    gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress);
 
     // Setup ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); static_cast<void>(io);
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 
     // Setup ImGui style
     ImGui::StyleColorsDark();
@@ -78,47 +71,8 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
     
-    // Our state
+    // Background color
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    
-    // Create the shader object
-    GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
-
-    // Load the SPIR-V module into the shader object
-    glShaderBinary(
-        1, 
-        &shader,
-        GL_SHADER_BINARY_FORMAT_SPIR_V,
-        spirv_code.value()->getBufferPointer(), 
-        static_cast<GLsizei>(spirv_code.value()->getBufferSize())
-    );
-
-    glSpecializeShader(
-        shader,
-        "main",
-        0,
-        nullptr,
-        nullptr
-    );
-
-    // This will now return FALSE
-    GLint status;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-    if (status) {
-        std::cout << "ok?" << std::endl;
-    } else {
-        std::cout << "not ok :(" << std::endl;
-    }
-
-    // This should now return TRUE
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
-
-    // Create a program, attach our shader to it, and link
-    GLuint program = glCreateProgram();
-
-    glAttachShader(program, shader);
-
-    glLinkProgram(program);
 
     // Main loop
     bool done = false;
@@ -133,7 +87,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                 done = true;
         }
 
-        // TODO: is this to reduce the number of frames while app is minimized?
+        // Reduce the number of frames per second while app is minimized
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED ) {
             SDL_Delay(30);
             continue;
@@ -144,18 +98,118 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        // Use a Begin/End pair to create a named window
         {
-            static int counter = 0;
+            ImGui::Begin("SYCL Runtime Compilation (SYCL-RTC)");
 
-            ImGui::Begin("Sample Window");  // Create a window
+            static std::array<char, 256> input_kernel_bundle_file_path {""};
+            static std::string kernel_bundle_status_message {"OK"};
 
-            if (ImGui::Button("Button"))    // Buttons return true when clicked
-                counter++;
+            ImGui::Text("File path to SYCL kernel bundle: ");
             ImGui::SameLine();
-            ImGui::Text("counter = %d", counter);
+            ImGui::InputText(
+                "", 
+                input_kernel_bundle_file_path.data(), 
+                input_kernel_bundle_file_path.size()
+            );
+
+            if (ImGui::Button("Compile SYCL kernel bundle")) {
+                std::filesystem::path kernel_bundle_file_path{input_kernel_bundle_file_path.data()};                
+                if (!kernel_bundle_file_path.empty()) {
+                    if (auto result = this->granos[0].create_kernel_bundle(kernel_bundle_file_path); !result.has_value()) {
+                        kernel_bundle_status_message = "Failed to create kernel bundle!";
+                    } else {
+                        kernel_bundle_status_message = "SYCL kernel compiled successfully!";
+                    }
+                } else {
+                    kernel_bundle_status_message = "File path to SYCL kernel bundle is empty!";
+                }
+            }
+            ImGui::Text("Status: %s", kernel_bundle_status_message.c_str());
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+            ImGui::End();
+        }
+
+        {
+            ImGui::Begin("Shader Compilation");
+            
+            static std::string shader_compiler_status_message {"OK"};
+            
+            if (ImGui::Button("Compile shaders")) {
+                
+                auto spirv_code = mazorca::compile_shader();
+                if (!spirv_code.has_value()) {
+                    shader_compiler_status_message = "Failed to compile shaders!";
+                } else {
+                    shader_compiler_status_message = "Shaders compiled successfully!";
+                }
+
+                // Create the shader object
+                GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
+
+                // Load the SPIR-V module into the shader object
+                glShaderBinary(
+                    1, 
+                    &shader,
+                    GL_SHADER_BINARY_FORMAT_SPIR_V,
+                    spirv_code.value()->getBufferPointer(), 
+                    static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+                );
+
+                glSpecializeShader(
+                    shader,
+                    "main",
+                    0,
+                    nullptr,
+                    nullptr
+                );
+
+                // This will now return FALSE
+                GLint status;
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+                if (status) {
+                    std::cout << "ok!" << std::endl;
+                } else {
+                    std::cout << "not ok :(" << std::endl;
+                }
+
+                // This should now return TRUE
+                glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+
+                // Create a program, attach our shader to it, and link
+                GLuint program = glCreateProgram();
+
+                glAttachShader(program, shader);
+
+                glLinkProgram(program);
+
+                glGetShaderiv(shader, GL_LINK_STATUS, &status);
+                if (status) {
+                    std::cout << "ok!" << std::endl;
+                } else {
+                    std::cout << "not ok :(" << std::endl;
+                }
+
+                GLuint resultBuffer = 0;
+                glGenBuffers(1, &resultBuffer);
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, resultBuffer);
+                glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 1024, nullptr, GL_DYNAMIC_COPY);
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, resultBuffer);
+
+                glUseProgram(program);
+                glDispatchCompute(128, 1, 1);
+                glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+                // DEBUG READ
+                float* ptr = (float*)glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float) * 128, GL_MAP_READ_BIT);
+                for (int i = 0; i < 128; ++i)
+                    std::cout << ptr[i] << " ";
+                std::cout << std::endl;
+                glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+            }
+            
+            ImGui::Text("Status: %s", shader_compiler_status_message.c_str());
+
             ImGui::End();
         }
 
