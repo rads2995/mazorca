@@ -99,7 +99,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         ImGui::NewFrame();
 
         {
-            ImGui::Begin("SYCL Runtime Compilation (SYCL-RTC)");
+            ImGui::Begin("SYCL Runtime Compiler (SYCL-RTC)");
 
             static std::array<char, 256> input_kernel_bundle_file_path {""};
             static std::string kernel_bundle_status_message {"OK"};
@@ -131,7 +131,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         }
 
         {
-            ImGui::Begin("Shader Runtime Compilation");
+            ImGui::Begin("Shader Runtime Compiler (Slang)");
             
             static std::array<char, 256> input_shader_file_path {""};
             static std::string shader_compiler_status_message {"OK"};

@@ -4,6 +4,7 @@
 #include <expected>
 #include <iostream>
 #include <fstream>
+#include <print>
 
 #include <slang.h>
 #include <slang-com-ptr.h>
@@ -25,7 +26,9 @@ namespace mazorca {
         std::istreambuf_iterator<char>()
     };    
 
-    // Create global session
+    // Create Slang global session
+    // TODO: "applications are advised to use a single global session if possible,
+    // rather than creating and then disposing of one for each compile." - Slang team
     Slang::ComPtr<slang::IGlobalSession> globalSession;
     slang::createGlobalSession(globalSession.writeRef());
 
@@ -34,23 +37,11 @@ namespace mazorca {
         .format = SLANG_SPIRV,
         .profile = globalSession->findProfile("glsl_460")
     };
-
-    // Compiler options
-    std::array<slang::CompilerOptionEntry, 1> options = {
-        {
-            {
-                slang::CompilerOptionName::EmitSpirvDirectly,
-                {slang::CompilerOptionValueKind::Int, 1, 0, nullptr, nullptr}
-            }
-        }
-    };
     
     // Create session
     slang::SessionDesc sessionDesc = {
         .targets = &targetDesc,
-        .targetCount = 1,
-        .compilerOptionEntries = options.data(),
-        .compilerOptionEntryCount = options.size()
+        .targetCount = 1
     };
 
     // Create the session
@@ -61,16 +52,15 @@ namespace mazorca {
     Slang::ComPtr<slang::IModule> slangModule;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+        
         slangModule = session->loadModuleFromSourceString(
             shader_file_path.stem().c_str(),        // Module name
-            shader_file_path.filename().c_str(),    // Module path
+            shader_file_path.c_str(),               // Module path
             shader_source.c_str(),                  // Shader source code
             diagnosticsBlob.writeRef()              // Optional diagnostic container
         );
         if (diagnosticsBlob != nullptr) {
-            std::cout 
-                << static_cast<const char*>(diagnosticsBlob->getBufferPointer()) 
-                << '\n';
+            std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
         }
         if (!slangModule) {
             return std::unexpected(error_code::invalid);
@@ -81,10 +71,10 @@ namespace mazorca {
     Slang::ComPtr<slang::IEntryPoint> entryPoint;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+        
         slangModule->findEntryPointByName("computeMain", entryPoint.writeRef());
-        if (!entryPoint)
-        {
-            std::cout << "Error getting entry point" << std::endl;
+        if (!entryPoint) {
+            std::println("Error obtaining entry point");
             return std::unexpected(error_code::invalid);
         }
     }
@@ -104,15 +94,15 @@ namespace mazorca {
             composedProgram.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
-            std::cout 
-                << static_cast<const char*>(diagnosticsBlob->getBufferPointer()) 
-                << '\n';
+            std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
         }
         if (SLANG_FAILED(result))
             return std::unexpected(error_code::invalid);
     }
 
-    // Link
+    // TODO: should we perform reflection on shader parameters and layout?
+
+    // Linking
     Slang::ComPtr<slang::IComponentType> linkedProgram;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
@@ -120,9 +110,7 @@ namespace mazorca {
             linkedProgram.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
-            std::cout 
-                << static_cast<const char*>(diagnosticsBlob->getBufferPointer()) 
-                << '\n';
+            std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
         }
         if (SLANG_FAILED(result))
             return std::unexpected(error_code::invalid);
@@ -133,20 +121,21 @@ namespace mazorca {
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         SlangResult result = linkedProgram->getEntryPointCode(
-            0,
-            0,
+            0,  // 0 means only one entry point
+            0,  // 0 means only one target
             spirvCode.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
-            std::cout 
-                << static_cast<const char*>(diagnosticsBlob->getBufferPointer()) 
-                << '\n';
+            std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
         }
         if (SLANG_FAILED(result))
             return std::unexpected(error_code::invalid);
     }
 
-    std::cout << "Compiled " << spirvCode->getBufferSize() << " bytes of SPIR-V" << std::endl;
+    std::println(
+        "Compiled {} bytes of SPIR-V from shader source string", 
+        spirvCode->getBufferSize()
+    );
 
     return spirvCode;
 }
