@@ -48,7 +48,9 @@ namespace mazorca {
     Slang::ComPtr<slang::ISession> session;
     globalSession->createSession(sessionDesc, session.writeRef());
 
-    // Load modules
+    // Load single module
+    // TODO: if multiple modules, each should be loaded in order of imports
+    // For now, import other Slang source files into a single translational unit
     Slang::ComPtr<slang::IModule> slangModule;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
@@ -68,21 +70,38 @@ namespace mazorca {
     }
 
     // Query entry points
-    Slang::ComPtr<slang::IEntryPoint> entryPoint;
+    // Note: entry points must be defined in the module to be compiled
+    Slang::ComPtr<slang::IEntryPoint> compute_entry_point;
+    Slang::ComPtr<slang::IEntryPoint> vertex_entry_point;
+    Slang::ComPtr<slang::IEntryPoint> fragment_entry_point;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         
-        slangModule->findEntryPointByName("computeMain", entryPoint.writeRef());
-        if (!entryPoint) {
-            std::println("Error obtaining entry point");
+        slangModule->findEntryPointByName("compute", compute_entry_point.writeRef());
+        if (!compute_entry_point) {
+            std::println("Error obtaining compute entry point");
+            return std::unexpected(error_code::invalid);
+        }
+
+        slangModule->findEntryPointByName("vertex", vertex_entry_point.writeRef());
+        if (!vertex_entry_point) {
+            std::println("Error obtaining compute entry point");
+            return std::unexpected(error_code::invalid);
+        }
+
+        slangModule->findEntryPointByName("fragment", fragment_entry_point.writeRef());
+        if (!fragment_entry_point) {
+            std::println("Error obtaining compute entry point");
             return std::unexpected(error_code::invalid);
         }
     }
 
     // Compose Modules + Entry Points
-    std::array<slang::IComponentType*, 2> componentTypes = {
+    std::array<slang::IComponentType*, 4> componentTypes = {
         slangModule,
-        entryPoint
+        compute_entry_point,
+        vertex_entry_point,
+        fragment_entry_point
     };
 
     Slang::ComPtr<slang::IComponentType> composedProgram;

@@ -1,6 +1,7 @@
-// Example slang shader to be compiled at run-time
+#language slang 2026
 
 import autodiff;
+import triangle;
 
 // hello_world.slang
 StructuredBuffer<float> buffer0;
@@ -9,7 +10,7 @@ RWStructuredBuffer<float> result;
 
 [shader("compute")]
 [numthreads(1,1,1)]
-void computeMain(uint3 threadId : SV_DispatchThreadID)
+void compute(uint3 threadId : SV_DispatchThreadID)
 {
     DifferentialPair<float> dp_a = diffPair(
         1.0, // Input 'a'
@@ -30,4 +31,23 @@ void computeMain(uint3 threadId : SV_DispatchThreadID)
 
     uint index = threadId.x;
     result[index] = buffer0[index] + buffer1[index];
+}
+
+[shader("vertex")]
+VSOutput vertex(uint vertexID: SV_VertexID) {
+    
+    VSOutput o;
+    o.PositionCS = float4(
+        positions[vertexID].x,
+        positions[vertexID].y,
+        0.0,
+        1.0
+    );
+    o.Color = colors[vertexID];
+    return o;
+}
+
+[shader("fragment")]
+float4 fragment(float3 color: COLOR0): SV_Target {
+    return float4(color.rgb, 1.0);
 }

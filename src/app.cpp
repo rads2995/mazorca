@@ -74,6 +74,10 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     // Background color
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
+    // OpenGL stuff
+    static GLuint program = 0;
+    static GLuint vao = 0;
+
     // Main loop
     bool done = false;
     
@@ -154,77 +158,72 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     } else {
                         
-                        // Create the shader object
-                        GLuint shader = glCreateShader(GL_COMPUTE_SHADER);
+                        // Create the vertex shader object
+                        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
-                        // Load the SPIR-V module into the shader object
+                        // Load the SPIR-V module into the vertex shader object
                         glShaderBinary(
                             1, 
-                            &shader,
+                            &vertex_shader,
                             GL_SHADER_BINARY_FORMAT_SPIR_V,
                             spirv_code.value()->getBufferPointer(), 
                             static_cast<GLsizei>(spirv_code.value()->getBufferSize())
                         );
 
+                        // Point to the verte entry point in the SPIR-V module
                         glSpecializeShader(
-                            shader,
-                            "main",
+                            vertex_shader,
+                            "vertex",
                             0,
                             nullptr,
                             nullptr
                         );
 
-                        // This should now return TRUE
+                       // Create the fragment shader object
+                        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+
+                        // Load the SPIR-V module into the vertex shader object
+                        glShaderBinary(
+                            1, 
+                            &fragment_shader,
+                            GL_SHADER_BINARY_FORMAT_SPIR_V,
+                            spirv_code.value()->getBufferPointer(), 
+                            static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+                        );
+
+                        // Point to the verte entry point in the SPIR-V module
+                        glSpecializeShader(
+                            fragment_shader,
+                            "fragment",
+                            0,
+                            nullptr,
+                            nullptr
+                        );
+
+                        // Check that all shaders loaded correctly
                         GLint status;
-                        glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+                        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
                         if (!status) {
-                            shader_compiler_status_message = "Failed to load SPIR-V module!";
+                            shader_compiler_status_message = "Failed to load vertex shader from SPIR-V module!";
                         }
-
-                        // Create a program, attach our shader to it, and link
-                        GLuint program = glCreateProgram();
-
-                        glAttachShader(program, shader);
-
+                        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &status);
+                        if (!status) {
+                            shader_compiler_status_message = "Failed to load fragment shader from SPIR-V module!";
+                        }                        
+                        
+                        // Create a program, attach our shaders to it, and link
+                        program = glCreateProgram();
+                        glAttachShader(program, vertex_shader);
+                        glAttachShader(program, fragment_shader);
                         glLinkProgram(program);
 
-                        glGetShaderiv(shader, GL_LINK_STATUS, &status);
+                        glGetProgramiv(program, GL_LINK_STATUS, &status);
                         if (!status) {
-                            shader_compiler_status_message = "Failed to link SPIR-V module!";
+                            shader_compiler_status_message = "Failed to link program from SPIR-V module!";
                         }
 
-                        float input0[128], input1[128], output[128];
-                        for (int i = 0; i < 128; ++i) {
-                            input0[i] = 10.f;
-                            input1[i] = 10.f;
-                            output[i] = 0.f;
-                        }
-
-                        GLuint buffers[3];
-                        glGenBuffers(3, buffers);
-
-                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[0]);
-                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, input0, GL_DYNAMIC_COPY);
-                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, buffers[0]);
-
-                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[1]);
-                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, input1, GL_DYNAMIC_COPY);
-                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, buffers[1]);
-
-                        glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffers[2]);
-                        glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(float) * 128, output, GL_DYNAMIC_COPY);
-                        glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, buffers[2]);
-
-                        glUseProgram(program);
-                        glDispatchCompute(128, 1, 1);
-                        glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-
-                        // Read from result buffer
-                        float* ptr = static_cast<float*>(glMapBufferRange(GL_SHADER_STORAGE_BUFFER, 0, sizeof(float) * 128, GL_MAP_READ_BIT));
-                        for (int i = 0; i < 128; ++i)
-                            std::cout << ptr[i] << " ";
-                        std::cout << std::endl;
-                        glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
+                        glGenVertexArrays(1, &vao);
+                        glBindVertexArray(vao);
 
                         shader_compiler_status_message = "Shaders compiled successfully!";
                     }
@@ -253,6 +252,11 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             clear_color.z * clear_color.w, 
             clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        glUseProgram(program);
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
