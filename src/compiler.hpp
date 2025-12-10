@@ -70,6 +70,7 @@ compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGl
 
     // Query entry points
     // Note: entry points must be defined in the module to be compiled
+    // TODO: use reflection to gather the names and number of entry points?
     Slang::ComPtr<slang::IEntryPoint> compute_entry_point;
     Slang::ComPtr<slang::IEntryPoint> vertex_entry_point;
     Slang::ComPtr<slang::IEntryPoint> fragment_entry_point;
@@ -134,7 +135,7 @@ compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGl
 
     // Perform reflection on compiled and linked program layout
     slang::ProgramLayout* programLayout = linkedProgram->getLayout();
-    
+
     // Get target SPIR-V code and store in map hashed by entry point name
     std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
     for (std::size_t i = 0; i < programLayout->getEntryPointCount(); i++) {
