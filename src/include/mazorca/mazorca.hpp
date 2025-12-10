@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <expected>
 #include <print>
+#include <vector>
 
 #include <sycl/sycl.hpp>
 
@@ -48,8 +49,8 @@ struct app {
 
     app(const grano& grano) : granos({grano}) {}
 
-    // TODO: add function add more grano objects to granos container
-    
+    app(const std::vector<grano>& granos_) : granos(granos_) {}
+
     [[nodiscard]] std::expected<void, error_code> run();
 };
 

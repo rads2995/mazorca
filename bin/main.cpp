@@ -1,7 +1,5 @@
 #include <mazorca/mazorca.hpp>
 
-#include <unistd.h>
-#include <filesystem>
 #include <print>
 
 #include <sycl/sycl.hpp>

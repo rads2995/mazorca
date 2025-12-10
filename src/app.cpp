@@ -8,6 +8,10 @@
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
+    // Create single global session to be used by the Slang shader compiler
+    Slang::ComPtr<slang::IGlobalSession> globalSession;
+    slang::createGlobalSession(globalSession.writeRef());
+
     // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println("Error: SDL_Init(): {}", SDL_GetError());
@@ -153,7 +157,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                 std::filesystem::path shader_file_path{input_shader_file_path.data()}; 
                
                 if (!shader_file_path.empty()) {
-                    auto spirv_map = mazorca::compile_shader(shader_file_path);
+                    auto spirv_map = mazorca::compile_shader(shader_file_path, globalSession);
                     if (!spirv_map.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     } else {

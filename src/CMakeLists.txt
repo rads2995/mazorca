@@ -24,7 +24,6 @@ target_link_libraries(mazorca
         $<BUILD_LOCAL_INTERFACE:imgui::imgui>
         $<BUILD_LOCAL_INTERFACE:glad::glad>
         $<BUILD_LOCAL_INTERFACE:slang>
-    PUBLIC
         SDL3::SDL3
         OpenGL::OpenGL
 )

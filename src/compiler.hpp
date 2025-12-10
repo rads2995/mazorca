@@ -14,7 +14,9 @@ namespace mazorca {
 
 [[nodiscard]] inline 
 std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, error_code> 
-compile_shader(std::filesystem::path& shader_file_path) {
+compile_shader(
+    std::filesystem::path& shader_file_path, 
+    Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
@@ -28,18 +30,12 @@ compile_shader(std::filesystem::path& shader_file_path) {
         std::istreambuf_iterator<char>()
     };    
 
-    // Create Slang global session
-    // TODO: "applications are advised to use a single global session if possible,
-    // rather than creating and then disposing of one for each compile." - Slang team
-    Slang::ComPtr<slang::IGlobalSession> globalSession;
-    slang::createGlobalSession(globalSession.writeRef());
-
     // List of enabled compilation targets
     slang::TargetDesc targetDesc = {
         .format = SLANG_SPIRV,
         .profile = globalSession->findProfile("glsl_460")
     };
-    
+
     // Create session
     slang::SessionDesc sessionDesc = {
         .targets = &targetDesc,
@@ -140,13 +136,13 @@ compile_shader(std::filesystem::path& shader_file_path) {
     
     // Get target SPIR-V code and store in map hashed by entry point name
     std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
-    for (SlangInt i = 0; i < programLayout->getEntryPointCount(); i++) {
+    for (std::size_t i = 0; i < programLayout->getEntryPointCount(); i++) {
 
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         Slang::ComPtr<slang::IBlob> spirvBlob;
         SlangResult result = linkedProgram->getEntryPointCode(
-            i,  // Entry point index
-            0,  // Target index
+            static_cast<SlangInt>(i),   // Entry point index
+            0,                          // Target index
             spirvBlob.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
