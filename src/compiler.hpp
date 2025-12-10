@@ -2,7 +2,6 @@
 
 #include <array>
 #include <expected>
-#include <iostream>
 #include <fstream>
 #include <print>
 
@@ -14,13 +13,12 @@ namespace mazorca {
 
 [[nodiscard]] inline 
 std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, error_code> 
-compile_shader(
-    std::filesystem::path& shader_file_path, 
-    Slang::ComPtr<slang::IGlobalSession>& globalSession) {
+compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
     if (!shader_file) {
+        std::println("ERROR: unable to read shader file: {}", shader_file_path.string());
         return std::unexpected(error_code::invalid);
     }
 
@@ -37,9 +35,14 @@ compile_shader(
     };
 
     // Create session
+    // Note: create path to parent directory due to lifetime of C string
+    std::filesystem::path module_search_path {shader_file_path.parent_path()};
+    std::array<const char*, 1> searchPaths = {module_search_path.c_str()};
     slang::SessionDesc sessionDesc = {
         .targets = &targetDesc,
-        .targetCount = 1
+        .targetCount = 1,
+        .searchPaths = searchPaths.data(),
+        .searchPathCount = searchPaths.size()
     };
 
     // Create the session
@@ -53,11 +56,9 @@ compile_shader(
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         
-        slangModule = session->loadModuleFromSourceString(
-            shader_file_path.stem().c_str(),        // Module name
-            shader_file_path.c_str(),               // Module path
-            shader_source.c_str(),                  // Shader source code
-            diagnosticsBlob.writeRef()              // Optional diagnostic container
+        slangModule = session->loadModule(
+            shader_file_path.stem().c_str(),    // Module name
+            diagnosticsBlob.writeRef()          // Optional diagnostic container
         );
         if (diagnosticsBlob != nullptr) {
             std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
