@@ -12,7 +12,9 @@
 
 namespace mazorca {
 
-[[nodiscard]] inline std::expected<Slang::ComPtr<slang::IBlob>, error_code> compile_shader(std::filesystem::path& shader_file_path) {
+[[nodiscard]] inline 
+std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, error_code> 
+compile_shader(std::filesystem::path& shader_file_path) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
@@ -119,8 +121,6 @@ namespace mazorca {
             return std::unexpected(error_code::invalid);
     }
 
-    // TODO: should we perform reflection on shader parameters and layout?
-
     // Linking
     Slang::ComPtr<slang::IComponentType> linkedProgram;
     {
@@ -135,28 +135,35 @@ namespace mazorca {
             return std::unexpected(error_code::invalid);
     }
 
-    // Get Target Kernel Code
-    Slang::ComPtr<slang::IBlob> spirvCode;
-    {
+    // Perform reflection on compiled and linked program layout
+    slang::ProgramLayout* programLayout = linkedProgram->getLayout();
+    
+    // Get target SPIR-V code and store in map hashed by entry point name
+    std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
+    for (SlangInt i = 0; i < programLayout->getEntryPointCount(); i++) {
+
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+        Slang::ComPtr<slang::IBlob> spirvBlob;
         SlangResult result = linkedProgram->getEntryPointCode(
-            0,  // 0 means only one entry point
-            0,  // 0 means only one target
-            spirvCode.writeRef(),
+            i,  // Entry point index
+            0,  // Target index
+            spirvBlob.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
             std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
         }
-        if (SLANG_FAILED(result))
+        if (SLANG_FAILED(result)) {
             return std::unexpected(error_code::invalid);
+        }
+
+        spirv_map[programLayout->getEntryPointByIndex(i)->getName()] = spirvBlob;
     }
 
-    std::println(
-        "Compiled {} bytes of SPIR-V from shader source string", 
-        spirvCode->getBufferSize()
-    );
+    for (const auto& [key, val]: spirv_map) {
+        std::println("{}, {}", key, val->getBufferSize());
+    }
 
-    return spirvCode;
+    return spirv_map;
 }
 
 } // namespace mazorca

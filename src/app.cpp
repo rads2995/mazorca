@@ -153,8 +153,8 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                 std::filesystem::path shader_file_path{input_shader_file_path.data()}; 
                
                 if (!shader_file_path.empty()) {
-                    auto spirv_code = mazorca::compile_shader(shader_file_path);
-                    if (!spirv_code.has_value()) {
+                    auto spirv_map = mazorca::compile_shader(shader_file_path);
+                    if (!spirv_map.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     } else {
                         
@@ -166,14 +166,14 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                             1, 
                             &vertex_shader,
                             GL_SHADER_BINARY_FORMAT_SPIR_V,
-                            spirv_code.value()->getBufferPointer(), 
-                            static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+                            spirv_map.value()["vertex"]->getBufferPointer(), 
+                            static_cast<GLsizei>(spirv_map.value()["vertex"]->getBufferSize())
                         );
 
-                        // Point to the verte entry point in the SPIR-V module
+                        // Point to the vertex shader entry point in the SPIR-V module
                         glSpecializeShader(
                             vertex_shader,
-                            "vertex",
+                            "main",
                             0,
                             nullptr,
                             nullptr
@@ -187,14 +187,14 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                             1, 
                             &fragment_shader,
                             GL_SHADER_BINARY_FORMAT_SPIR_V,
-                            spirv_code.value()->getBufferPointer(), 
-                            static_cast<GLsizei>(spirv_code.value()->getBufferSize())
+                            spirv_map.value()["fragment"]->getBufferPointer(), 
+                            static_cast<GLsizei>(spirv_map.value()["fragment"]->getBufferSize())
                         );
 
-                        // Point to the verte entry point in the SPIR-V module
+                        // Point to the fragment shader entry point in the SPIR-V module
                         glSpecializeShader(
                             fragment_shader,
-                            "fragment",
+                            "main",
                             0,
                             nullptr,
                             nullptr
