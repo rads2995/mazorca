@@ -68,48 +68,21 @@ compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGl
         }
     }
 
-    // Query entry points
-    // Note: entry points must be defined in the module to be compiled
-    // TODO: use reflection to gather the names and number of entry points?
-    Slang::ComPtr<slang::IEntryPoint> compute_entry_point;
-    Slang::ComPtr<slang::IEntryPoint> vertex_entry_point;
-    Slang::ComPtr<slang::IEntryPoint> fragment_entry_point;
-    {
-        Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-        
-        slangModule->findEntryPointByName("compute", compute_entry_point.writeRef());
-        if (!compute_entry_point) {
-            std::println("Error obtaining compute entry point");
-            return std::unexpected(error_code::invalid);
-        }
-
-        slangModule->findEntryPointByName("vertex", vertex_entry_point.writeRef());
-        if (!vertex_entry_point) {
-            std::println("Error obtaining compute entry point");
-            return std::unexpected(error_code::invalid);
-        }
-
-        slangModule->findEntryPointByName("fragment", fragment_entry_point.writeRef());
-        if (!fragment_entry_point) {
-            std::println("Error obtaining compute entry point");
-            return std::unexpected(error_code::invalid);
-        }
+    // Query entry points and compose module
+    int num_entry_points = slangModule->getDefinedEntryPointCount();
+    std::vector<slang::IComponentType*> componentTypes;
+    for (int i = 0; i < num_entry_points; i++) {
+        Slang::ComPtr<slang::IEntryPoint> entryPoint;
+        slangModule->getDefinedEntryPoint(i, entryPoint.writeRef());
+        componentTypes.emplace_back(entryPoint.get());
     }
-
-    // Compose Modules + Entry Points
-    std::array<slang::IComponentType*, 4> componentTypes = {
-        slangModule,
-        compute_entry_point,
-        vertex_entry_point,
-        fragment_entry_point
-    };
 
     Slang::ComPtr<slang::IComponentType> composedProgram;
     {
         Slang::ComPtr<slang::IBlob> diagnosticsBlob;
         SlangResult result = session->createCompositeComponentType(
             componentTypes.data(),
-            componentTypes.size(),
+            static_cast<SlangInt>(componentTypes.size()),
             composedProgram.writeRef(),
             diagnosticsBlob.writeRef());
         if (diagnosticsBlob != nullptr) {
