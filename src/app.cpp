@@ -19,7 +19,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     }
 
     // OpenGL Version 4.6
-    const char* glsl_version = "#version 460";
+    std::array<char, 13> glsl_version{"#version 460"};
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
@@ -39,13 +39,13 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     );
 
     if (window == nullptr) {
-        std::cout << "Error: SDL_CreateWindow(): " << SDL_GetError() << '\n';
+        std::println("Error: SDL_CreateWindow(): {}", SDL_GetError());
         return std::unexpected(mazorca::error_code::invalid);
     }
 
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     if (gl_context == nullptr) {
-        std::cout << "Error: SDL_GL_CreateContext(): " << SDL_GetError() << '\n';
+        std::println("Error: SDL_GL_CreateContext(): {}", SDL_GetError());
         return std::unexpected(mazorca::error_code::invalid);
     }
     
@@ -73,7 +73,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplOpenGL3_Init(glsl_version.data());
     
     // Background color
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -89,10 +89,12 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             ImGui_ImplSDL3_ProcessEvent(&event);
-            if (event.type == SDL_EVENT_QUIT)
+            if (event.type == SDL_EVENT_QUIT) {
                 done = true;
-            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window))
+            }
+            if (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && event.window.windowID == SDL_GetWindowID(window)) {
                 done = true;
+            }
         }
 
         // Reduce the number of frames per second while app is minimized
@@ -123,17 +125,25 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             if (ImGui::Button("Compile SYCL kernel bundle")) {
                 std::filesystem::path kernel_bundle_file_path{input_kernel_bundle_file_path.data()};                
                 if (!kernel_bundle_file_path.empty()) {
+
+                    if (kernel_bundle_file_path.extension() != ".cpp") {
+                        kernel_bundle_status_message = "Invalid file extension! Valid entries include: .cpp";
+                        continue;
+                    }
+
                     if (auto result = this->granos[0].create_kernel_bundle(kernel_bundle_file_path); !result.has_value()) {
                         kernel_bundle_status_message = "Failed to create kernel bundle!";
                     } else {
                         kernel_bundle_status_message = "SYCL kernel compiled successfully!";
+
+                        // TODO: should we add a way to execute the kernel? What if there are multiple?
                     }
                 } else {
                     kernel_bundle_status_message = "File path to SYCL kernel bundle is empty!";
                 }
             }
+            
             ImGui::Text("Status: %s", kernel_bundle_status_message.c_str());
-
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
             ImGui::End();
         }
@@ -153,10 +163,14 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             );
 
             if (ImGui::Button("Compile shaders")) {
-                
                 std::filesystem::path shader_file_path{input_shader_file_path.data()}; 
-               
                 if (!shader_file_path.empty()) {
+                    
+                    if (shader_file_path.extension() != ".slang") {
+                        shader_compiler_status_message = "Invalid file extension! Valid entries include: .slang";
+                        continue;
+                    }
+
                     auto spirv_map = mazorca::compile_shader(shader_file_path, globalSession);
                     if (!spirv_map.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
@@ -236,9 +250,8 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                     shader_compiler_status_message = "File path to shader file is empty!";
                 }
             }
-            
-            ImGui::Text("Status: %s", shader_compiler_status_message.c_str());
 
+            ImGui::Text("Status: %s", shader_compiler_status_message.c_str());
             ImGui::End();
         }
 
@@ -266,6 +279,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     }
     
     // Cleanup
+    std::println("Performing app clean-up and closing...");
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();

@@ -1,7 +1,5 @@
 #include <mazorca/mazorca.hpp>
 
-#include <print>
-
 #include <sycl/sycl.hpp>
 
 int main() {

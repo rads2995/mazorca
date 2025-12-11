@@ -65,16 +65,28 @@ std::expected<void, mazorca::error_code> mazorca::grano::create_kernel_bundle(st
         return std::unexpected(mazorca::error_code::invalid);
     }
 
-    // Create surcle bundle for current device
+    // Create kernel bundle for current device
     // TODO: what is the concrete type instead of auto?
-    auto source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
+    
+    
+    sycl::kernel_bundle<sycl::bundle_state::ext_oneapi_source>  
+    source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
         this->sycl_queue.get_context(), 
         sycl::ext::oneapi::experimental::source_language::sycl, 
         sycl_source
     );
 
     // Build kernel using run-time compilation (this is expensive!)
-    auto exec_bundle = sycl::ext::oneapi::experimental::build(source_bundle);
+    // Note: build arguments can be passed using the build_options array
+    sycl::ext::oneapi::experimental::build_options build_opts {};
+    std::string compiler_output {};
+    sycl::ext::oneapi::experimental::save_log log{&compiler_output};
+    sycl::kernel_bundle<sycl::bundle_state::executable>
+    exec_bundle = sycl::ext::oneapi::experimental::build(
+        source_bundle,
+        sycl::ext::oneapi::experimental::properties{build_opts, log}
+    );
+    println("SYCL RTC output:\n{}", compiler_output);
 
     // Query the kernels that were compiled for the current device
     if(exec_bundle.ext_oneapi_has_kernel("vec_add")) {

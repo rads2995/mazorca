@@ -130,8 +130,9 @@ compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGl
         spirv_map[programLayout->getEntryPointByIndex(i)->getName()] = spirvBlob;
     }
 
+    std::println("successfully compiled shaders for input file: {}", shader_file_path.string());
     for (const auto& [key, val]: spirv_map) {
-        std::println("{}, {}", key, val->getBufferSize());
+        std::println("{} bytes compiled for entry point {}.", val->getBufferSize(), key);
     }
 
     return spirv_map;
