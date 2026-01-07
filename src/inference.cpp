@@ -3,6 +3,7 @@
 #include <unordered_set>
 
 #include "oneapi/dnnl/dnnl.hpp"
+#include "oneapi/dnnl/dnnl_sycl.hpp"
 #include "oneapi/dnnl/dnnl_graph.hpp"
 
 struct cpu_deletor_t {
@@ -219,8 +220,8 @@ std::expected<void, mazorca::error_code> mazorca::grano::nn_example() {
 
     std::vector<dnnl::graph::partition> partitions = g.get_partitions();
 
-    dnnl::engine engine {dnnl::engine::kind::cpu, 0};
-    dnnl::stream stream {engine, dnnl::stream::flags::default_flags};
+    dnnl::engine engine {dnnl::sycl_interop::make_engine(this->sycl_device, this->sycl_context)};
+    dnnl::stream stream {dnnl::sycl_interop::make_stream(engine, this->sycl_queue)};
 
     // Mapping from logical tensor id to output tensors
     std::unordered_map<size_t, dnnl::graph::tensor> global_outputs_ts_map;
