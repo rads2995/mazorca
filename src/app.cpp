@@ -8,10 +8,6 @@
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
 
-    // Create single global session to be used by the Slang shader compiler
-    Slang::ComPtr<slang::IGlobalSession> globalSession;
-    slang::createGlobalSession(globalSession.writeRef());
-
     // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_VIDEO)) {
         std::println("Error: SDL_Init(): {}", SDL_GetError());
@@ -54,22 +50,22 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 
+    // Load GLAD
     gladLoadGLLoader((GLADloadproc) SDL_GL_GetProcAddress);
 
     // Setup ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); static_cast<void>(io);
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;   // Enable Keyboard Controls
 
     // Setup ImGui style
     ImGui::StyleColorsDark();
 
     // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale
-    // TODO: replace with io.ConfigDpiScaleFonts = true and io.ConfigDpiScaleViewports = true
-    style.FontScaleDpi = 2.0f * main_scale;  // Set initial font scale
+    style.ScaleAllSizes(main_scale);    // Bake a fixed style scale
+    style.FontScaleDpi = 2.0f;          // Set initial font scale
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
@@ -81,6 +77,20 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     // OpenGL stuff
     static GLuint program = 0;
     static GLuint vao = 0;
+
+    // Input file paths for SYCL kernels and Slang shaders run-time compilation
+    std::filesystem::path kernel_bundle_file_path {};
+    std::filesystem::path shader_file_path {};
+
+    // Create single global session to be used by the Slang shader compiler
+    Slang::ComPtr<slang::IGlobalSession> globalSession;
+    slang::createGlobalSession(globalSession.writeRef());
+    
+    this->granos[0].nn_example();
+
+    if (auto neural_net = this->granos[0].nn_example(); !neural_net.has_value()) {
+        std::println("Failed to run neural network example!");
+    }
 
     // Main loop
     bool done = false;
@@ -123,7 +133,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             );
 
             if (ImGui::Button("Compile SYCL kernel bundle")) {
-                std::filesystem::path kernel_bundle_file_path{input_kernel_bundle_file_path.data()};                
+                kernel_bundle_file_path.assign(input_kernel_bundle_file_path.data());
                 if (!kernel_bundle_file_path.empty()) {
 
                     if (kernel_bundle_file_path.extension() != ".cpp") {
@@ -131,7 +141,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         continue;
                     }
 
-                    if (auto result = this->granos[0].create_kernel_bundle(kernel_bundle_file_path); !result.has_value()) {
+                    if (auto kernel_bundle = this->granos[0].create_kernel_bundle(kernel_bundle_file_path); !kernel_bundle.has_value()) {
                         kernel_bundle_status_message = "Failed to create kernel bundle!";
                     } else {
                         kernel_bundle_status_message = "SYCL kernel compiled successfully!";
@@ -163,7 +173,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             );
 
             if (ImGui::Button("Compile shaders")) {
-                std::filesystem::path shader_file_path{input_shader_file_path.data()}; 
+                shader_file_path.assign(input_shader_file_path.data()); 
                 if (!shader_file_path.empty()) {
                     
                     if (shader_file_path.extension() != ".slang") {
@@ -176,72 +186,79 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     } else {
                         
-                        // Create the vertex shader object
-                        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+                        if (shader_file_path.stem().string() == "triangle") {
+                            // Create the vertex shader object
+                            GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
 
-                        // Load the SPIR-V module into the vertex shader object
-                        glShaderBinary(
-                            1, 
-                            &vertex_shader,
-                            GL_SHADER_BINARY_FORMAT_SPIR_V,
-                            spirv_map.value()["vertex"]->getBufferPointer(), 
-                            static_cast<GLsizei>(spirv_map.value()["vertex"]->getBufferSize())
-                        );
+                            // Load the SPIR-V module into the vertex shader object
+                            glShaderBinary(
+                                1, 
+                                &vertex_shader,
+                                GL_SHADER_BINARY_FORMAT_SPIR_V,
+                                spirv_map.value()["vertex"]->getBufferPointer(), 
+                                static_cast<GLsizei>(spirv_map.value()["vertex"]->getBufferSize())
+                            );
+                            
+                            // Point to the vertex shader entry point in the SPIR-V module
+                            glSpecializeShader(
+                                vertex_shader,
+                                "main",
+                                0,
+                                nullptr,
+                                nullptr
+                            );
 
-                        // Point to the vertex shader entry point in the SPIR-V module
-                        glSpecializeShader(
-                            vertex_shader,
-                            "main",
-                            0,
-                            nullptr,
-                            nullptr
-                        );
+                            // Create the fragment shader object
+                            GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
 
-                       // Create the fragment shader object
-                        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+                            // Load the SPIR-V module into the vertex shader object
+                            glShaderBinary(
+                                1, 
+                                &fragment_shader,
+                                GL_SHADER_BINARY_FORMAT_SPIR_V,
+                                spirv_map.value()["fragment"]->getBufferPointer(), 
+                                static_cast<GLsizei>(spirv_map.value()["fragment"]->getBufferSize())
+                            );
 
-                        // Load the SPIR-V module into the vertex shader object
-                        glShaderBinary(
-                            1, 
-                            &fragment_shader,
-                            GL_SHADER_BINARY_FORMAT_SPIR_V,
-                            spirv_map.value()["fragment"]->getBufferPointer(), 
-                            static_cast<GLsizei>(spirv_map.value()["fragment"]->getBufferSize())
-                        );
+                            // Point to the fragment shader entry point in the SPIR-V module
+                            glSpecializeShader(
+                                fragment_shader,
+                                "main",
+                                0,
+                                nullptr,
+                                nullptr
+                            );
 
-                        // Point to the fragment shader entry point in the SPIR-V module
-                        glSpecializeShader(
-                            fragment_shader,
-                            "main",
-                            0,
-                            nullptr,
-                            nullptr
-                        );
+                            // Check that all shaders loaded correctly
+                            GLint status;
+                            glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
+                            if (!status) {
+                                shader_compiler_status_message = "Failed to load vertex shader from SPIR-V module!";
+                            }
+                            glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &status);
+                            if (!status) {
+                                shader_compiler_status_message = "Failed to load fragment shader from SPIR-V module!";
+                            }                        
+                            
+                            // Create a program, attach our shaders to it, and link
+                            program = glCreateProgram();
+                            glAttachShader(program, vertex_shader);
+                            glAttachShader(program, fragment_shader);
+                            glLinkProgram(program);
 
-                        // Check that all shaders loaded correctly
-                        GLint status;
-                        glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &status);
-                        if (!status) {
-                            shader_compiler_status_message = "Failed to load vertex shader from SPIR-V module!";
+                            glGetProgramiv(program, GL_LINK_STATUS, &status);
+                            if (!status) {
+                                shader_compiler_status_message = "Failed to link program from SPIR-V module!";
+                            }
+
+                            glGenVertexArrays(1, &vao);
+                            glBindVertexArray(vao);
                         }
-                        glGetShaderiv(fragment_shader, GL_COMPILE_STATUS, &status);
-                        if (!status) {
-                            shader_compiler_status_message = "Failed to load fragment shader from SPIR-V module!";
-                        }                        
-                        
-                        // Create a program, attach our shaders to it, and link
-                        program = glCreateProgram();
-                        glAttachShader(program, vertex_shader);
-                        glAttachShader(program, fragment_shader);
-                        glLinkProgram(program);
 
-                        glGetProgramiv(program, GL_LINK_STATUS, &status);
-                        if (!status) {
-                            shader_compiler_status_message = "Failed to link program from SPIR-V module!";
+                        else {
+                            shader_compiler_status_message = "Provided shader file not implemented yet...";
+                            continue;
                         }
-
-                        glGenVertexArrays(1, &vao);
-                        glBindVertexArray(vao);
 
                         shader_compiler_status_message = "Shaders compiled successfully!";
                     }
@@ -270,14 +287,16 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glUseProgram(program);
-        glBindVertexArray(vao);
-        glDrawArrays(GL_TRIANGLES, 0, 3);
+        // if (shader_file_path.stem().string() == "triangle") {
+            glUseProgram(program);
+            glBindVertexArray(vao);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+        // }
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
-    
+
     // Cleanup
     std::println("Performing app clean-up and closing...");
     ImGui_ImplOpenGL3_Shutdown();

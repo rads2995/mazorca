@@ -8,9 +8,9 @@ int main() {
     sycl::device sycl_device;
 
     // Default SYCL device to CPU if GPU is not available
-    // TODO: future SYCL versions will avoid throwing exceptions
+    // TODO: Using CPU due to no oneDNN's graph support for AMD GPUs
     try {
-        sycl_device = sycl::device(sycl::gpu_selector_v);
+        sycl_device = sycl::device(sycl::cpu_selector_v);
     } catch (const sycl::exception& e) {
         std::println(
             "Cannot select GPU:\n{}\nUsing CPU device instead.", 

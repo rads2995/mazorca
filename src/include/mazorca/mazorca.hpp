@@ -41,6 +41,8 @@ struct grano {
     [[nodiscard]] std::expected<void, error_code> work();
 
     [[nodiscard]] std::expected<void, error_code> create_kernel_bundle(std::filesystem::path& kernel_bundle_file_path);
+
+    [[nodiscard]] std::expected<void, error_code> nn_example();
 };
 
 struct app {

@@ -1,5 +1,6 @@
 include(cmake/imgui.cmake)
 include(cmake/slang.cmake)
+include(cmake/oneDNN.cmake)
 add_subdirectory(glad)
 
 find_package(SDL3 REQUIRED)
@@ -16,6 +17,7 @@ target_sources(mazorca
         FILES include/mazorca/mazorca.hpp
     PRIVATE
         grano.cpp
+        training.cpp
         app.cpp
 )
 
@@ -24,6 +26,7 @@ target_link_libraries(mazorca
         $<BUILD_LOCAL_INTERFACE:imgui::imgui>
         $<BUILD_LOCAL_INTERFACE:glad::glad>
         $<BUILD_LOCAL_INTERFACE:slang>
+        $<BUILD_LOCAL_INTERFACE:dnnl>
         SDL3::SDL3
         OpenGL::OpenGL
 )

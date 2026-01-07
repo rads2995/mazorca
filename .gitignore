@@ -40,5 +40,8 @@ build
 *.out
 *.app
 
-# debug information files
+# Debug information files
 *.dwo
+
+# imgui
+imgui.ini
