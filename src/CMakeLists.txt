@@ -17,7 +17,7 @@ target_sources(mazorca
         FILES include/mazorca/mazorca.hpp
     PRIVATE
         grano.cpp
-        training.cpp
+        inference.cpp
         app.cpp
 )
 
@@ -26,6 +26,7 @@ target_link_libraries(mazorca
         $<BUILD_LOCAL_INTERFACE:imgui::imgui>
         $<BUILD_LOCAL_INTERFACE:glad::glad>
         $<BUILD_LOCAL_INTERFACE:slang>
+        $<BUILD_LOCAL_INTERFACE:slang-rhi>
         $<BUILD_LOCAL_INTERFACE:dnnl>
         SDL3::SDL3
         OpenGL::OpenGL

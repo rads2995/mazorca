@@ -31,7 +31,7 @@ compile_shader(std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGl
     // List of enabled compilation targets
     slang::TargetDesc targetDesc = {
         .format = SLANG_SPIRV,
-        .profile = globalSession->findProfile("glsl_460")
+        .profile = globalSession->findProfile("spirv_1_5")
     };
 
     // Create session

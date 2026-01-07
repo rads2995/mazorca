@@ -1,5 +1,6 @@
 #include <mazorca/mazorca.hpp>
 #include "compiler.hpp"
+#include "training.hpp"
 
 #include <SDL3/SDL.h>
 #include <glad/glad.h>
