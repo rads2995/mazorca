@@ -1,10 +1,10 @@
-#include <mazorca/mazorca.hpp>
+#include "mazorca/mazorca.hpp"
 
 #include <unordered_set>
 
-#include "oneapi/dnnl/dnnl.hpp"
-#include "oneapi/dnnl/dnnl_sycl.hpp"
-#include "oneapi/dnnl/dnnl_graph.hpp"
+#include <oneapi/dnnl/dnnl.hpp>
+#include <oneapi/dnnl/dnnl_sycl.hpp>
+#include <oneapi/dnnl/dnnl_graph.hpp>
 
 struct cpu_deletor_t {
     cpu_deletor_t() = default;

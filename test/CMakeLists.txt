@@ -23,5 +23,15 @@ target_link_libraries(mazorca_test
         GTest::gtest_main
 )
 
+target_compile_options(mazorca_test
+    PRIVATE
+        ${CXX_COMPILER_FLAGS}
+)
+
+target_link_options(mazorca_test
+    PRIVATE
+        ${CXX_LINKER_FLAGS}
+)
+
 include(GoogleTest)
 gtest_discover_tests(mazorca_test)

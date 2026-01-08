@@ -17,7 +17,10 @@ target_sources(mazorca
         FILES include/mazorca/mazorca.hpp
     PRIVATE
         grano.cpp
+        compiler.cpp
+        training.cpp
         inference.cpp
+        vulkan.cpp
         app.cpp
 )
 
@@ -33,12 +36,12 @@ target_link_libraries(mazorca
 )
 
 target_compile_options(mazorca
-    PUBLIC
+    PRIVATE
         ${CXX_COMPILER_FLAGS}
 )
 
 target_link_options(mazorca
-    PUBLIC
+    PRIVATE
         ${CXX_LINKER_FLAGS}
 )
 

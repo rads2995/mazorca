@@ -10,3 +10,13 @@ target_link_libraries(mazorca_main
     PRIVATE
         mazorca::mazorca
 )
+
+target_compile_options(mazorca_main
+    PRIVATE
+        ${CXX_COMPILER_FLAGS}
+)
+
+target_link_options(mazorca_main
+    PRIVATE
+        ${CXX_LINKER_FLAGS}
+)
