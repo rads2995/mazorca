@@ -19,6 +19,7 @@ target_sources(imgui
         BASE_DIRS ${imgui_SOURCE_DIR}
         FILES 
             ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.h
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h
             ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.h
     PRIVATE
         ${imgui_SOURCE_DIR}/imgui.cpp
@@ -26,5 +27,6 @@ target_sources(imgui
         ${imgui_SOURCE_DIR}/imgui_tables.cpp
         ${imgui_SOURCE_DIR}/imgui_widgets.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
+        ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
         ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )

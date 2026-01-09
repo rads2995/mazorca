@@ -1,14 +1,11 @@
 #include <mazorca/mazorca.hpp>
 
-#include <sycl/sycl.hpp>
-
 int main() {
 
     // Create a SYCL device object
     sycl::device sycl_device;
 
     // Default SYCL device to CPU if GPU is not available
-    // TODO: Using CPU due to no oneDNN's graph support for AMD GPUs
     try {
         sycl_device = sycl::device(sycl::cpu_selector_v);
     } catch (const sycl::exception& e) {
@@ -20,7 +17,7 @@ int main() {
     }
 
     // Create mazorca grano object from single SYCL device
-    mazorca::grano grano{sycl_device};
+    mazorca::grano grano {sycl_device};
 
     // Create app GUI object from grano object
     mazorca::app app(grano);

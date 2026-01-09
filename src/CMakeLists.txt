@@ -4,6 +4,7 @@ include(cmake/oneDNN.cmake)
 add_subdirectory(glad)
 
 find_package(SDL3 REQUIRED)
+find_package(Vulkan REQUIRED)
 find_package(OpenGL REQUIRED)
 
 add_library(mazorca STATIC)
@@ -20,7 +21,6 @@ target_sources(mazorca
         compiler.cpp
         training.cpp
         inference.cpp
-        vulkan.cpp
         app.cpp
 )
 
@@ -32,6 +32,7 @@ target_link_libraries(mazorca
         $<BUILD_LOCAL_INTERFACE:slang-rhi>
         $<BUILD_LOCAL_INTERFACE:dnnl>
         SDL3::SDL3
+        Vulkan::Vulkan
         OpenGL::OpenGL
 )
 
