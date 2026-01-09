@@ -2,25 +2,19 @@
 
 int main() {
 
-    // Create a SYCL device object
-    sycl::device sycl_device;
-
-    // Default SYCL device to CPU if GPU is not available
+    // Create CPU and GPU (if available) SYCL device objects   
+    std::vector<mazorca::grano> sycl_devices {sycl::device{sycl::cpu_selector_v}};
     try {
-        sycl_device = sycl::device(sycl::cpu_selector_v);
+        sycl_devices.emplace_back(sycl::device{sycl::gpu_selector_v});
     } catch (const sycl::exception& e) {
         std::println(
-            "Cannot select GPU:\n{}\nUsing CPU device instead.", 
+            "Cannot create SYCL device from GPU:\n{}", 
             e.what()
         );
-        sycl_device = sycl::device(sycl::cpu_selector_v);
     }
 
-    // Create mazorca grano object from single SYCL device
-    mazorca::grano grano {sycl_device};
-
-    // Create app GUI object from grano object
-    mazorca::app app(grano);
+    // Create app GUI object and register SYCL device objects
+    mazorca::app app {sycl_devices};
 
     // Run mazorca's GUI interface
     if (auto result = app.run(); !result.has_value()) {

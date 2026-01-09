@@ -49,8 +49,6 @@ struct app {
     
     std::vector<grano> granos;
 
-    app(const grano& grano) : granos({grano}) {}
-
     app(const std::vector<grano>& granos_) : granos(granos_) {}
 
     [[nodiscard]] std::expected<void, error_code> run();
