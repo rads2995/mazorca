@@ -8,22 +8,22 @@
 #include <backends/imgui_impl_vulkan.h>
 
 // Vulkan Data
-static VkAllocationCallbacks*   g_Allocator = nullptr;
-static VkInstance               g_Instance = VK_NULL_HANDLE;
-static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
-static VkDevice                 g_Device = VK_NULL_HANDLE;
-static uint32_t                 g_QueueFamily = (uint32_t)-1;
-static VkQueue                  g_Queue = VK_NULL_HANDLE;
-static VkPipelineCache          g_PipelineCache = VK_NULL_HANDLE;
-static VkDescriptorPool         g_DescriptorPool = VK_NULL_HANDLE;
+static VkAllocationCallbacks* g_Allocator = nullptr;
+static VkInstance g_Instance = VK_NULL_HANDLE;
+static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
+static VkDevice g_Device = VK_NULL_HANDLE;
+static uint32_t g_QueueFamily = static_cast<uint32_t>(-1);
+static VkQueue g_Queue = VK_NULL_HANDLE;
+static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
+static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
 
 static ImGui_ImplVulkanH_Window g_MainWindowData;
-static uint32_t                 g_MinImageCount = 2;
-static bool                     g_SwapChainRebuild = false;
+static uint32_t g_MinImageCount = 2;
+static bool g_SwapChainRebuild = false;
 
 static void check_vk_result(VkResult err) {
     if (err != VK_SUCCESS) {
-        std::println("[vulkan] Error: VkResult = ");
+        std::println("[vulkan] Error: VkResult = {}", std::to_underlying(err));
     }
 }
 
@@ -68,7 +68,9 @@ static void SetupVulkan(ImVector<const char*> instance_extensions) {
 
     // Select Physical Device (GPU)
     g_PhysicalDevice = ImGui_ImplVulkanH_SelectPhysicalDevice(g_Instance);
-    IM_ASSERT(g_PhysicalDevice != VK_NULL_HANDLE);
+    if(g_PhysicalDevice == VK_NULL_HANDLE) {
+        std::println("[Error] Vulkan opaque handle to physical device object points to null!");
+    }
 
     // Select graphics queue family
     g_QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(g_PhysicalDevice);
@@ -94,7 +96,7 @@ static void SetupVulkan(ImVector<const char*> instance_extensions) {
         queue_info[0].pQueuePriorities = queue_priority;
         VkDeviceCreateInfo create_info = {};
         create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.queueCreateInfoCount = sizeof(queue_info) / sizeof(queue_info[0]);
+        create_info.queueCreateInfoCount = std::size(queue_info);
         create_info.pQueueCreateInfos = queue_info;
         create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.Size);
         create_info.ppEnabledExtensionNames = device_extensions.Data;
@@ -342,14 +344,16 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         .Device = g_Device,
         .QueueFamily = g_QueueFamily,
         .Queue = g_Queue,
-        .PipelineCache = g_PipelineCache,
         .DescriptorPool = g_DescriptorPool,
         .MinImageCount = g_MinImageCount,
         .ImageCount = wd->ImageCount,
+        .PipelineCache = g_PipelineCache,
+        .PipelineInfoMain = {
+            .RenderPass = wd->RenderPass,
+            .Subpass = 0,
+            .MSAASamples = VK_SAMPLE_COUNT_1_BIT
+        },
         .Allocator = g_Allocator,
-        .PipelineInfoMain.RenderPass = wd->RenderPass,
-        .PipelineInfoMain.Subpass = 0,
-        .PipelineInfoMain.MSAASamples = VK_SAMPLE_COUNT_1_BIT,
         .CheckVkResultFn = check_vk_result
     };
     ImGui_ImplVulkan_Init(&init_info);
