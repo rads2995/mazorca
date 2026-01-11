@@ -1,6 +1,17 @@
 #include "training.hpp"
 #include "compiler.hpp"
 
+#include <slang-rhi.h>
+
+struct Kernel {
+
+    Slang::ComPtr<rhi::IShaderProgram> program;
+    Slang::ComPtr<rhi::IComputePipeline> pipeline;
+    operator bool() {
+        return program && pipeline;
+    }
+};
+
 struct NetworkParameterAllocation {
     
     std::size_t weightsOffset;
