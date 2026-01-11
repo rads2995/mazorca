@@ -220,8 +220,12 @@ std::expected<void, mazorca::error_code> mazorca::grano::nn_example() {
 
     std::vector<dnnl::graph::partition> partitions = g.get_partitions();
 
-    dnnl::engine engine {dnnl::sycl_interop::make_engine(this->sycl_device, this->sycl_context)};
-    dnnl::stream stream {dnnl::sycl_interop::make_stream(engine, this->sycl_queue)};
+    // TODO: running inference on CPU-only for now
+    dnnl::engine engine {dnnl::engine::kind::cpu, 0};
+    dnnl::stream stream {engine};
+    // TODO: When using SYCL for CPU and GPU, TBB throws seg-fault after exiting main thread
+    // dnnl::engine engine {dnnl::sycl_interop::make_engine(this->sycl_device, this->sycl_context)};
+    // dnnl::stream stream {dnnl::sycl_interop::make_stream(engine, this->sycl_queue)};
 
     // Mapping from logical tensor id to output tensors
     std::unordered_map<size_t, dnnl::graph::tensor> global_outputs_ts_map;

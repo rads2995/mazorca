@@ -49,7 +49,7 @@ struct app {
     
     std::vector<grano> granos;
 
-    app(const std::vector<grano>& granos_) : granos(granos_) {}
+    app(std::vector<grano>&& granos_) : granos(std::move(granos_)) {}
 
     [[nodiscard]] std::expected<void, error_code> run();
 };

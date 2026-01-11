@@ -283,7 +283,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     }
 
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     SDL_Window* window = SDL_CreateWindow(
         "mazorca",
         static_cast<int>(1920 * main_scale), 
@@ -375,7 +375,15 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Main loop
     bool done = false;
-    
+
+    // Local vector with SYCL device names for running kernels on various devices
+    std::vector<std::string> sycl_device_names;
+    sycl_device_names.reserve(granos.size());
+    for (const auto& grano : this->granos) {
+        sycl_device_names.emplace_back(grano.sycl_device.get_info<sycl::info::device::name>());
+    }
+    int sycl_device_index = 0;
+
     while (!done) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
@@ -412,13 +420,24 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         {
             ImGui::Begin("SYCL Runtime Compiler (SYCL-RTC)");
 
+            ImGui::Combo(
+                "##sycl_devices", 
+                &sycl_device_index, 
+                [](void* data, int idx) -> const char* {
+                    auto& value = *static_cast<const std::vector<std::string>*>(data);
+                    return value[idx].c_str();
+                }, 
+                &sycl_device_names,
+                sycl_device_names.size()
+            );
+            
             static std::array<char, 256> input_kernel_bundle_file_path {""};
             static std::string kernel_bundle_status_message {"OK"};
 
             ImGui::Text("File path to SYCL kernel bundle: ");
             ImGui::SameLine();
             ImGui::InputText(
-                "", 
+                "##sycl_path", 
                 input_kernel_bundle_file_path.data(), 
                 input_kernel_bundle_file_path.size()
             );
@@ -432,7 +451,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         continue;
                     }
 
-                    if (auto kernel_bundle = this->granos[0].create_kernel_bundle(kernel_bundle_file_path); !kernel_bundle.has_value()) {
+                    if (auto kernel_bundle = this->granos[sycl_device_index].create_kernel_bundle(kernel_bundle_file_path); !kernel_bundle.has_value()) {
                         kernel_bundle_status_message = "Failed to create kernel bundle!";
                     } else {
                         kernel_bundle_status_message = "SYCL kernel compiled successfully!";
@@ -458,7 +477,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             ImGui::Text("File path to shader file: ");
             ImGui::SameLine();
             ImGui::InputText(
-                "", 
+                "##slang_path", 
                 input_shader_file_path.data(), 
                 input_shader_file_path.size()
             );
