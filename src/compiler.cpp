@@ -1,6 +1,6 @@
 #include "compiler.hpp"
 
-std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, mazorca::error_code> 
+std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> 
 mazorca::compile_shader(const std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
@@ -94,34 +94,5 @@ mazorca::compile_shader(const std::filesystem::path& shader_file_path, Slang::Co
             return std::unexpected(mazorca::error_code::invalid);
     }
 
-    // Perform reflection on compiled and linked program layout
-    slang::ProgramLayout* programLayout = linkedProgram->getLayout();
-
-    // Get target SPIR-V code and store in map hashed by entry point name
-    std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
-    for (std::size_t i = 0; i < programLayout->getEntryPointCount(); i++) {
-
-        Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-        Slang::ComPtr<slang::IBlob> spirvBlob;
-        SlangResult result = linkedProgram->getEntryPointCode(
-            static_cast<SlangInt>(i),   // Entry point index
-            0,                          // Target index
-            spirvBlob.writeRef(),
-            diagnosticsBlob.writeRef());
-        if (diagnosticsBlob != nullptr) {
-            std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
-        }
-        if (SLANG_FAILED(result)) {
-            return std::unexpected(mazorca::error_code::invalid);
-        }
-
-        spirv_map[programLayout->getEntryPointByIndex(i)->getName()] = spirvBlob;
-    }
-
-    std::println("successfully compiled shaders for input file: {}", shader_file_path.string());
-    for (const auto& [key, val]: spirv_map) {
-        std::println("{} bytes compiled for entry point {}.", val->getBufferSize(), key);
-    }
-
-    return spirv_map;
+    return linkedProgram;
 }

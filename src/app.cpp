@@ -283,7 +283,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     }
 
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_FULLSCREEN | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+    SDL_WindowFlags window_flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
     SDL_Window* window = SDL_CreateWindow(
         "mazorca",
         static_cast<int>(1920 * main_scale), 
@@ -369,10 +369,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     Slang::ComPtr<slang::IGlobalSession> globalSession;
     slang::createGlobalSession(globalSession.writeRef());
 
-    if (auto neural_net = this->granos[0].nn_example(); !neural_net.has_value()) {
-        std::println("Failed to run neural network example!");
-    }
-
     // Main loop
     bool done = false;
 
@@ -383,6 +379,9 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         sycl_device_names.emplace_back(grano.sycl_device.get_info<sycl::info::device::name>());
     }
     int sycl_device_index = 0;
+    bool train_network = false;
+    std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> slang_program;
+    static std::string shader_compiler_status_message {"OK"};
 
     while (!done) {
         SDL_Event event;
@@ -472,7 +471,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             ImGui::Begin("Shader Runtime Compiler (Slang)");
             
             static std::array<char, 256> input_shader_file_path {""};
-            static std::string shader_compiler_status_message {"OK"};
             
             ImGui::Text("File path to shader file: ");
             ImGui::SameLine();
@@ -491,21 +489,17 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         continue;
                     }
 
-                    auto spirv_map = mazorca::compile_shader(shader_file_path, globalSession);
-                    if (!spirv_map.has_value()) {
+                    slang_program = mazorca::compile_shader(shader_file_path, globalSession);
+                    if (!slang_program.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     } else {
                         
-                        if (true) {
+                        train_network = true;
 
-                        }
-
-                        else {
-                            shader_compiler_status_message = "Provided shader file not implemented yet...";
-                            continue;
-                        }
-
-                        shader_compiler_status_message = "Shaders compiled successfully!";
+                        // else {
+                        //     shader_compiler_status_message = "Provided shader file not implemented yet...";
+                        //     continue;
+                        // }
                     }
 
                 } else {
@@ -530,6 +524,18 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             wd->ClearValue.color.float32[3] = clear_color.w;
             FrameRender(wd, draw_data);
             FramePresent(wd);
+        }
+
+        if (train_network) {
+            train_network = false;
+            auto trained_model = mazorca::train_model(slang_program.value(), globalSession);
+            if (!trained_model.has_value()) {
+                shader_compiler_status_message = "Failed to train neural network!";
+            }
+
+            else {
+                shader_compiler_status_message = "Neural network trained successfully!";
+            }
         }
     }
 
