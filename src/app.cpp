@@ -365,12 +365,9 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     std::filesystem::path kernel_bundle_file_path {};
     std::filesystem::path shader_file_path {};
 
-    // Create single global session to be used by the Slang shader compiler
+    // Create global session to be used by the Slang compilation API
     Slang::ComPtr<slang::IGlobalSession> globalSession;
     slang::createGlobalSession(globalSession.writeRef());
-
-    // Main loop
-    bool done = false;
 
     // Local vector with SYCL device names for running kernels on various devices
     std::vector<std::string> sycl_device_names;
@@ -381,7 +378,10 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     int sycl_device_index = 0;
     bool train_network = false;
     std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> slang_program;
-    static std::string shader_compiler_status_message {"OK"};
+    std::string shader_compiler_status_message {"OK"};
+
+    // Main loop
+    bool done = false;
 
     while (!done) {
         SDL_Event event;
@@ -540,7 +540,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     }
 
     // Cleanup
-    std::println("Performing app clean-up and closing...");
+    std::println("[{}] [INFO] Performing app clean-up and closing", mazorca::current_time());
     err = vkDeviceWaitIdle(g_Device);
     check_vk_result(err);
     ImGui_ImplVulkan_Shutdown();

@@ -9,6 +9,6 @@ namespace mazorca {
 
 [[nodiscard]] 
 std::expected<void, mazorca::error_code> 
-train_model(const Slang::ComPtr<slang::IComponentType>& slang_program, Slang::ComPtr<slang::IGlobalSession>& globalSession);
+train_model(Slang::ComPtr<slang::IComponentType>& slang_program, Slang::ComPtr<slang::IGlobalSession>& globalSession);
 
 }

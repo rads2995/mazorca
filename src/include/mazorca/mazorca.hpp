@@ -4,6 +4,8 @@
 #include <expected>
 #include <print>
 #include <vector>
+#include <string>
+#include <chrono>
 
 #include <sycl/sycl.hpp>
 
@@ -12,6 +14,21 @@ namespace mazorca {
 enum class error_code : int {
     invalid = 1
 };
+
+// Current point in time for application logging purposes
+inline std::string current_time() {
+    std::time_t time_now {
+        std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())
+    };
+    std::string time_now_str {std::ctime(&time_now)};
+
+    // If string is empty, we return to avoid undefined behavior
+    if (time_now_str.empty()) return time_now_str;
+
+    // If not empty, remove newline character from end of string
+    time_now_str.pop_back();
+    return time_now_str;
+}
 
 // SYCL asynchronous exception handler
 inline void sycl_async_handler(sycl::exception_list exceptions) {

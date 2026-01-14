@@ -6,7 +6,7 @@ mazorca::compile_shader(const std::filesystem::path& shader_file_path, Slang::Co
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
     if (!shader_file) {
-        std::println("ERROR: unable to read shader file: {}", shader_file_path.string());
+        std::println("[{}] [ERROR] Unable to read shader file: {}", current_time(), shader_file_path.string());
         return std::unexpected(mazorca::error_code::invalid);
     }
 
