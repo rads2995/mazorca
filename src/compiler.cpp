@@ -1,5 +1,7 @@
 #include "compiler.hpp"
 
+#include <slang-rhi.h>
+
 std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> 
 mazorca::compile_shader(const std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
@@ -93,6 +95,52 @@ mazorca::compile_shader(const std::filesystem::path& shader_file_path, Slang::Co
         if (SLANG_FAILED(result))
             return std::unexpected(mazorca::error_code::invalid);
     }
+
+    // Perform reflection on compiled and linked program layout
+    slang::ProgramLayout* programLayout = linkedProgram->getLayout();
+    for (std::size_t i = 0; i < programLayout->getEntryPointCount(); i++) {
+        Slang::ComPtr<slang::IBlob> diagnosticsBlob;
+        Slang::ComPtr<slang::IBlob> spirvBlob;
+        SlangResult result = linkedProgram->getEntryPointCode(
+            static_cast<SlangInt>(i),   // Entry point index
+            0,                          // Target index
+            spirvBlob.writeRef(),
+            diagnosticsBlob.writeRef());
+        if (diagnosticsBlob != nullptr) {
+            std::println("{} [ERROR] {}", mazorca::current_time(), static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
+        }
+        if (SLANG_FAILED(result)) {
+            std::println("{} [ERROR] Failed to obtain entry points from linked Slang program.", mazorca::current_time());
+            return std::unexpected(mazorca::error_code::invalid);
+        }
+        std::println("{} bytes compiled for entry point {}.", spirvBlob->getBufferSize(), programLayout->getEntryPointByIndex(i)->getName());
+    }
+
+    rhi::DeviceDesc deviceDesc {
+        .deviceType = rhi::DeviceType::Vulkan,
+        .slang {
+            .slangGlobalSession = globalSession,
+            .targetProfile = "spirv_1_6"
+        },
+    };
+
+    Slang::ComPtr<rhi::IDevice> device {rhi::getRHI()->createDevice(deviceDesc)};
+    if (!device) {
+        std::println("Failed to create Slang RHI device object!");
+        return std::unexpected(mazorca::error_code::invalid);
+    }
+
+    rhi::ShaderProgramDesc shader_program_desc {
+        .slangGlobalScope = linkedProgram
+    };
+    
+    Slang::ComPtr<rhi::IShaderProgram> shaderProgram {device->createShaderProgram(shader_program_desc)};
+
+    rhi::ComputePipelineDesc compute_pipeline_desc {
+        .program = shaderProgram
+    };
+
+    // Slang::ComPtr<rhi::IComputePipeline> compute_pipeline {device->createComputePipeline(compute_pipeline_desc)};
 
     return linkedProgram;
 }

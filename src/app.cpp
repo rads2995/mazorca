@@ -1,7 +1,6 @@
 #include "mazorca/mazorca.hpp"
 #include "graphics.hpp"
 #include "compiler.hpp"
-#include "training.hpp"
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
     mazorca::vulkan_data vulkan_data {
@@ -114,7 +113,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         sycl_device_names.emplace_back(grano.sycl_device.get_info<sycl::info::device::name>());
     }
     int sycl_device_index = 0;
-    bool train_network = false;
     std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> slang_program;
     std::string shader_compiler_status_message {"OK"};
 
@@ -241,14 +239,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                     slang_program = mazorca::compile_shader(shader_file_path, globalSession);
                     if (!slang_program.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
-                    } else {
-                        
-                        train_network = true;
-
-                        // else {
-                        //     shader_compiler_status_message = "Provided shader file not implemented yet...";
-                        //     continue;
-                        // }
                     }
 
                 } else {
@@ -273,18 +263,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             wd->ClearValue.color.float32[3] = clear_color.w;
             mazorca::FrameRender(vulkan_data, wd, draw_data);
             mazorca::FramePresent(vulkan_data, wd);
-        }
-
-        if (train_network) {
-            train_network = false;
-            auto trained_model = mazorca::train_model(slang_program.value(), globalSession);
-            if (!trained_model.has_value()) {
-                shader_compiler_status_message = "Failed to train neural network!";
-            }
-
-            else {
-                shader_compiler_status_message = "Neural network trained successfully!";
-            }
         }
     }
 

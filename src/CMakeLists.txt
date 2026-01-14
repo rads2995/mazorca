@@ -18,7 +18,6 @@ target_sources(mazorca
         grano.cpp
         graphics.cpp
         compiler.cpp
-        training.cpp
         inference.cpp
         app.cpp
 )
