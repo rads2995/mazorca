@@ -1,284 +1,24 @@
-#include <mazorca/mazorca.hpp>
+#include "mazorca/mazorca.hpp"
+#include "graphics.hpp"
 #include "compiler.hpp"
 #include "training.hpp"
 
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_vulkan.h>
-#include <backends/imgui_impl_sdl3.h>
-#include <backends/imgui_impl_vulkan.h>
-
-// Vulkan Data
-static VkAllocationCallbacks* g_Allocator = nullptr;
-static VkInstance g_Instance = VK_NULL_HANDLE;
-static VkPhysicalDevice g_PhysicalDevice = VK_NULL_HANDLE;
-static VkDevice g_Device = VK_NULL_HANDLE;
-static uint32_t g_QueueFamily = static_cast<uint32_t>(-1);
-static VkQueue g_Queue = VK_NULL_HANDLE;
-static VkPipelineCache g_PipelineCache = VK_NULL_HANDLE;
-static VkDescriptorPool g_DescriptorPool = VK_NULL_HANDLE;
-
-static ImGui_ImplVulkanH_Window g_MainWindowData;
-static uint32_t g_MinImageCount = 2;
-static bool g_SwapChainRebuild = false;
-
-static void check_vk_result(VkResult err) {
-    if (err != VK_SUCCESS) {
-        std::println("[vulkan] Error: VkResult = {}", std::to_underlying(err));
-    }
-}
-
-static bool isExtensionAvailable(const ImVector<VkExtensionProperties>& properties, const char* extension) {
-    for (const VkExtensionProperties& property : properties) {
-        if (strcmp(property.extensionName, extension) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
-static void SetupVulkan(ImVector<const char*> instance_extensions) {
-
-    VkResult err;
-
-    // Create Vulkan Instance
-    {
-        VkInstanceCreateInfo create_info {
-            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
-        };
-
-        // Enumerate available extensions
-        uint32_t properties_count;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.Data);
-        check_vk_result(err);
-
-        // Enable required extensions
-        if (isExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
-            instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-        }
-
-        // Create Vulkan Instance
-        create_info.enabledExtensionCount = static_cast<uint32_t>(instance_extensions.Size);
-        create_info.ppEnabledExtensionNames = instance_extensions.Data;
-        err = vkCreateInstance(&create_info, g_Allocator, &g_Instance);
-        check_vk_result(err);
-    }
-
-    // Select Physical Device (GPU)
-    g_PhysicalDevice = ImGui_ImplVulkanH_SelectPhysicalDevice(g_Instance);
-    if(g_PhysicalDevice == VK_NULL_HANDLE) {
-        std::println("[Error] Vulkan opaque handle to physical device object points to null!");
-    }
-
-    // Select graphics queue family
-    g_QueueFamily = ImGui_ImplVulkanH_SelectQueueFamilyIndex(g_PhysicalDevice);
-    IM_ASSERT(g_QueueFamily != static_cast<uint32_t>(-1));
-
-    // Create Logical Device (with 1 queue)
-    {
-        ImVector<const char*> device_extensions;
-        device_extensions.push_back("VK_KHR_swapchain");
-
-        // Enumerate physical device extension
-        uint32_t properties_count;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        vkEnumerateDeviceExtensionProperties(g_PhysicalDevice, nullptr, &properties_count, properties.Data);
-
-        const float queue_priority[] = { 1.0f };
-        VkDeviceQueueCreateInfo queue_info[1] = {};
-        queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info[0].queueFamilyIndex = g_QueueFamily;
-        queue_info[0].queueCount = 1;
-        queue_info[0].pQueuePriorities = queue_priority;
-        VkDeviceCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.queueCreateInfoCount = std::size(queue_info);
-        create_info.pQueueCreateInfos = queue_info;
-        create_info.enabledExtensionCount = static_cast<uint32_t>(device_extensions.Size);
-        create_info.ppEnabledExtensionNames = device_extensions.Data;
-        err = vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_Device);
-        check_vk_result(err);
-        vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
-    }
-
-    // Create Descriptor Pool
-    // If you wish to load e.g. additional textures you may need to alter pools sizes and maxSets.
-    {
-        VkDescriptorPoolSize pool_sizes[] = {
-            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE },
-        };
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize& pool_size : pool_sizes) {
-            pool_info.maxSets += pool_size.descriptorCount;
-        }
-        pool_info.poolSizeCount = std::size(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-        err = vkCreateDescriptorPool(g_Device, &pool_info, g_Allocator, &g_DescriptorPool);
-        check_vk_result(err);
-    }
-}
-
-// All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
-// Your real engine/app may not use them.
-static void SetupVulkanWindow(ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface, int width, int height) {
-    wd->Surface = surface;
-
-    // Check for WSI support
-    VkBool32 res;
-    vkGetPhysicalDeviceSurfaceSupportKHR(g_PhysicalDevice, g_QueueFamily, wd->Surface, &res);
-    if (res != VK_TRUE) {
-        std::println("Error no WSI support on physical device.");
-        return;
-    }
-
-    // Select surface format
-    const VkFormat requestSurfaceImageFormat[] = {
-        VK_FORMAT_B8G8R8A8_UNORM, 
-        VK_FORMAT_R8G8B8A8_UNORM, 
-        VK_FORMAT_B8G8R8_UNORM, 
-        VK_FORMAT_R8G8B8_UNORM
-    };
-    const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(
-        g_PhysicalDevice, 
-        wd->Surface, 
-        requestSurfaceImageFormat, 
-        std::size(requestSurfaceImageFormat), 
-        requestSurfaceColorSpace
-    );
-
-    VkPresentModeKHR present_modes[] = { VK_PRESENT_MODE_FIFO_KHR };
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(
-        g_PhysicalDevice, 
-        wd->Surface, 
-        &present_modes[0], 
-        std::size(present_modes)
-    );
-
-    IM_ASSERT(g_MinImageCount >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(
-        g_Instance, 
-        g_PhysicalDevice, 
-        g_Device, 
-        wd, 
-        g_QueueFamily, 
-        g_Allocator, 
-        width, height, 
-        g_MinImageCount, 
-        0
-    );
-}
-
-static void CleanupVulkan() {
-    vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
-
-    vkDestroyDevice(g_Device, g_Allocator);
-    vkDestroyInstance(g_Instance, g_Allocator);
-}
-
-static void CleanupVulkanWindow() {
-    ImGui_ImplVulkanH_DestroyWindow(g_Instance, g_Device, &g_MainWindowData, g_Allocator);
-}
-
-static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
-{
-    VkSemaphore image_acquired_semaphore  = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
-    VkResult err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
-    if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
-        g_SwapChainRebuild = true;
-    if (err == VK_ERROR_OUT_OF_DATE_KHR)
-        return;
-    if (err != VK_SUBOPTIMAL_KHR)
-        check_vk_result(err);
-
-    ImGui_ImplVulkanH_Frame* fd = &wd->Frames[wd->FrameIndex];
-    {
-        err = vkWaitForFences(g_Device, 1, &fd->Fence, VK_TRUE, UINT64_MAX);    // wait indefinitely instead of periodically checking
-        check_vk_result(err);
-
-        err = vkResetFences(g_Device, 1, &fd->Fence);
-        check_vk_result(err);
-    }
-    {
-        err = vkResetCommandPool(g_Device, fd->CommandPool, 0);
-        check_vk_result(err);
-        VkCommandBufferBeginInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        info.flags |= VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-        err = vkBeginCommandBuffer(fd->CommandBuffer, &info);
-        check_vk_result(err);
-    }
-    {
-        VkRenderPassBeginInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        info.renderPass = wd->RenderPass;
-        info.framebuffer = fd->Framebuffer;
-        info.renderArea.extent.width = wd->Width;
-        info.renderArea.extent.height = wd->Height;
-        info.clearValueCount = 1;
-        info.pClearValues = &wd->ClearValue;
-        vkCmdBeginRenderPass(fd->CommandBuffer, &info, VK_SUBPASS_CONTENTS_INLINE);
-    }
-
-    // Record dear imgui primitives into command buffer
-    ImGui_ImplVulkan_RenderDrawData(draw_data, fd->CommandBuffer);
-
-    // Submit command buffer
-    vkCmdEndRenderPass(fd->CommandBuffer);
-    {
-        VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        VkSubmitInfo info = {};
-        info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        info.waitSemaphoreCount = 1;
-        info.pWaitSemaphores = &image_acquired_semaphore;
-        info.pWaitDstStageMask = &wait_stage;
-        info.commandBufferCount = 1;
-        info.pCommandBuffers = &fd->CommandBuffer;
-        info.signalSemaphoreCount = 1;
-        info.pSignalSemaphores = &render_complete_semaphore;
-
-        err = vkEndCommandBuffer(fd->CommandBuffer);
-        check_vk_result(err);
-        err = vkQueueSubmit(g_Queue, 1, &info, fd->Fence);
-        check_vk_result(err);
-    }
-}
-
-static void FramePresent(ImGui_ImplVulkanH_Window* wd)
-{
-    if (g_SwapChainRebuild)
-        return;
-    VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
-    VkPresentInfoKHR info = {};
-    info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    info.waitSemaphoreCount = 1;
-    info.pWaitSemaphores = &render_complete_semaphore;
-    info.swapchainCount = 1;
-    info.pSwapchains = &wd->Swapchain;
-    info.pImageIndices = &wd->FrameIndex;
-    VkResult err = vkQueuePresentKHR(g_Queue, &info);
-    if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
-        g_SwapChainRebuild = true;
-    if (err == VK_ERROR_OUT_OF_DATE_KHR)
-        return;
-    if (err != VK_SUBOPTIMAL_KHR)
-        check_vk_result(err);
-    wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->SemaphoreCount; // Now we can use the next set of semaphores
-}
-
 std::expected<void, mazorca::error_code> mazorca::app::run() {
+    mazorca::vulkan_data vulkan_data {
+        .vk_allocator = nullptr,
+        .vk_instance = VK_NULL_HANDLE,
+        .vk_physical_device = VK_NULL_HANDLE,
+        .vk_device = VK_NULL_HANDLE,
+        .vk_queue_family = static_cast<uint32_t>(-1),
+        .vk_queue = VK_NULL_HANDLE,
+        .vk_pipeline_cache = VK_NULL_HANDLE,
+        .vk_descriptor_pool = VK_NULL_HANDLE,
+        .vk_min_image_count = 2,
+        .vk_swap_chain_rebuild = false
+    };
 
-    // Initialize the SDL library
     if (!SDL_Init(SDL_INIT_VIDEO)) {
-        std::println("Error: SDL_Init(): {}", SDL_GetError());
+        std::println("[{}] [ERROR] SDL_Init(): {}", mazorca::current_time(), SDL_GetError());
         return std::unexpected(mazorca::error_code::invalid);
     }
 
@@ -291,34 +31,32 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         window_flags
     );
 
-    if (window == nullptr) {
-        std::println("Error: SDL_CreateWindow(): {}", SDL_GetError());
+    if (!window) {
+        std::println("[{}] [ERROR] SDL_CreateWindow(): {}", mazorca::current_time(), SDL_GetError());
         return std::unexpected(mazorca::error_code::invalid);
     }
 
     ImVector<const char*> extensions;
     {
-        uint32_t sdl_extensions_count = 0;
+        std::uint32_t sdl_extensions_count = 0;
         const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extensions_count);
-        for (uint32_t n = 0; n < sdl_extensions_count; n++) {
+        for (std::uint32_t n = 0; n < sdl_extensions_count; n++) {
             extensions.push_back(sdl_extensions[n]);
         }
     }
-    SetupVulkan(extensions);
+    mazorca::SetupVulkan(vulkan_data, extensions);
 
-    // Create window surface
     VkSurfaceKHR surface;
     VkResult err;
-    if (SDL_Vulkan_CreateSurface(window, g_Instance, g_Allocator, &surface) == 0) {
-        std::println("Failed to create Vulkan surface.");
+    if (SDL_Vulkan_CreateSurface(window, vulkan_data.vk_instance, vulkan_data.vk_allocator, &surface) == 0) {
+        std::println("[{}] [ERROR] Failed to create Vulkan surface.", mazorca::current_time());
         return std::unexpected(mazorca::error_code::invalid);
     }
-    
-    // Create Framebuffers
+
     int w, h;
     SDL_GetWindowSize(window, &w, &h);
-    ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-    SetupVulkanWindow(wd, surface, w, h);
+    ImGui_ImplVulkanH_Window* wd = &vulkan_data.vk_main_window_data;
+    mazorca::SetupVulkanWindow(vulkan_data, wd, surface, w, h);
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 
@@ -339,22 +77,22 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
     // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForVulkan(window);
     ImGui_ImplVulkan_InitInfo init_info {
-        .Instance = g_Instance,
-        .PhysicalDevice = g_PhysicalDevice,
-        .Device = g_Device,
-        .QueueFamily = g_QueueFamily,
-        .Queue = g_Queue,
-        .DescriptorPool = g_DescriptorPool,
-        .MinImageCount = g_MinImageCount,
+        .Instance = vulkan_data.vk_instance,
+        .PhysicalDevice = vulkan_data.vk_physical_device,
+        .Device = vulkan_data.vk_device,
+        .QueueFamily = vulkan_data.vk_queue_family,
+        .Queue = vulkan_data.vk_queue,
+        .DescriptorPool = vulkan_data.vk_descriptor_pool,
+        .MinImageCount = vulkan_data.vk_min_image_count,
         .ImageCount = wd->ImageCount,
-        .PipelineCache = g_PipelineCache,
+        .PipelineCache = vulkan_data.vk_pipeline_cache,
         .PipelineInfoMain = {
             .RenderPass = wd->RenderPass,
             .Subpass = 0,
             .MSAASamples = VK_SAMPLE_COUNT_1_BIT
         },
-        .Allocator = g_Allocator,
-        .CheckVkResultFn = check_vk_result
+        .Allocator = vulkan_data.vk_allocator,
+        .CheckVkResultFn = mazorca::check_vk_result
     };
     ImGui_ImplVulkan_Init(&init_info);
 
@@ -404,11 +142,22 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         // Resize swap chain?
         int fb_width, fb_height;
         SDL_GetWindowSize(window, &fb_width, &fb_height);
-        if (fb_width > 0 && fb_height > 0 && (g_SwapChainRebuild || g_MainWindowData.Width != fb_width || g_MainWindowData.Height != fb_height)) {
-            ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-            ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, wd, g_QueueFamily, g_Allocator, fb_width, fb_height, g_MinImageCount, 0);
-            g_MainWindowData.FrameIndex = 0;
-            g_SwapChainRebuild = false;
+        if (fb_width > 0 && fb_height > 0 && (vulkan_data.vk_swap_chain_rebuild || vulkan_data.vk_main_window_data.Width != fb_width || vulkan_data.vk_main_window_data.Height != fb_height)) {
+            ImGui_ImplVulkan_SetMinImageCount(vulkan_data.vk_min_image_count);
+            ImGui_ImplVulkanH_CreateOrResizeWindow(
+                vulkan_data.vk_instance, 
+                vulkan_data.vk_physical_device, 
+                vulkan_data.vk_device, 
+                wd, 
+                vulkan_data.vk_queue_family, 
+                vulkan_data.vk_allocator, 
+                fb_width, 
+                fb_height, 
+                vulkan_data.vk_min_image_count, 
+                0
+            );
+            vulkan_data.vk_main_window_data.FrameIndex = 0;
+            vulkan_data.vk_swap_chain_rebuild = false;
         }
 
         // Start the Dear ImGui frame
@@ -522,8 +271,8 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
             wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
             wd->ClearValue.color.float32[3] = clear_color.w;
-            FrameRender(wd, draw_data);
-            FramePresent(wd);
+            mazorca::FrameRender(vulkan_data, wd, draw_data);
+            mazorca::FramePresent(vulkan_data, wd);
         }
 
         if (train_network) {
@@ -541,14 +290,14 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Cleanup
     std::println("[{}] [INFO] Performing app clean-up and closing", mazorca::current_time());
-    err = vkDeviceWaitIdle(g_Device);
-    check_vk_result(err);
+    err = vkDeviceWaitIdle(vulkan_data.vk_device);
+    mazorca::check_vk_result(err);
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
 
-    CleanupVulkanWindow();
-    CleanupVulkan();
+    mazorca::CleanupVulkanWindow(vulkan_data);
+    mazorca::CleanupVulkan(vulkan_data);
 
     SDL_DestroyWindow(window);
     SDL_Quit();

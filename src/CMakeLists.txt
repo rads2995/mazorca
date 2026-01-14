@@ -16,6 +16,7 @@ target_sources(mazorca
         FILES include/mazorca/mazorca.hpp
     PRIVATE
         grano.cpp
+        graphics.cpp
         compiler.cpp
         training.cpp
         inference.cpp

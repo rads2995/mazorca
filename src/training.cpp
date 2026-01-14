@@ -25,7 +25,7 @@ mazorca::train_model(Slang::ComPtr<slang::IComponentType>& slang_program, Slang:
         .slangGlobalScope = slang_program
     };
     
-    Slang::ComPtr<rhi::IShaderProgram> shaderProgram {device->createShaderProgram(shader_program_desc)};
+    // Slang::ComPtr<rhi::IShaderProgram> shaderProgram {device->createShaderProgram(shader_program_desc)};
 
     // rhi::ComputePipelineDesc compute_pipeline_desc {
     //     .program = shaderProgram
