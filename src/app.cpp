@@ -104,7 +104,10 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Create global session to be used by the Slang compilation API
     Slang::ComPtr<slang::IGlobalSession> globalSession;
-    slang::createGlobalSession(globalSession.writeRef());
+    if(SLANG_FAILED(slang::createGlobalSession(globalSession.writeRef()))) {
+        std::println("[{}] [ERROR] Failed to create Slang global session.", mazorca::current_time());
+        return std::unexpected(mazorca::error_code::invalid);
+    }
 
     // Local vector with SYCL device names for running kernels on various devices
     std::vector<std::string> sycl_device_names;
@@ -113,7 +116,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         sycl_device_names.emplace_back(grano.sycl_device.get_info<sycl::info::device::name>());
     }
     int sycl_device_index = 0;
-    std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code> slang_program;
     std::string shader_compiler_status_message {"OK"};
 
     // Main loop
@@ -236,7 +238,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         continue;
                     }
 
-                    slang_program = mazorca::compile_shader(shader_file_path, globalSession);
+                    auto slang_program = mazorca::compile_shader(shader_file_path, globalSession);
                     if (!slang_program.has_value()) {
                         shader_compiler_status_message = "Failed to compile shaders!";
                     }

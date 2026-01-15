@@ -8,7 +8,7 @@
 namespace mazorca {
 
 [[nodiscard]] 
-std::expected<Slang::ComPtr<slang::IComponentType>, mazorca::error_code>
+std::expected<void, mazorca::error_code>
 compile_shader(const std::filesystem::path& shader_file_path, Slang::ComPtr<slang::IGlobalSession>& globalSession);
 
 } // namespace mazorca
