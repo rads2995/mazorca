@@ -123,63 +123,28 @@ mazorca::compile_shader(mazorca::vulkan_data& vulkan_data, const std::filesystem
         }
     }
 
-    // Perform reflection on the composed and linked Slang program
-    slang::ProgramLayout* programLayout = linkedProgram->getLayout();
-    for (std::size_t i = 0; i < programLayout->getEntryPointCount(); i++) {
-        Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-        Slang::ComPtr<slang::IBlob> spirvBlob;
-        SlangResult result = linkedProgram->getEntryPointCode(
-            static_cast<SlangInt>(i),   // Entry point index
-            0,                          // Target index
-            spirvBlob.writeRef(),
-            diagnosticsBlob.writeRef());
-        if (diagnosticsBlob != nullptr) {
-            std::println("{} [ERROR] {}", mazorca::current_time(), static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
-        }
-        if (SLANG_FAILED(result)) {
-            std::println("{} [ERROR] Failed to obtain entry points from linked Slang program.", mazorca::current_time());
-            return std::unexpected(mazorca::error_code::invalid);
-        }
-        std::println(
-            "{} [INFO] {} bytes compiled for entry point {}.", 
-            mazorca::current_time(), 
-            spirvBlob->getBufferSize(), 
-            programLayout->getEntryPointByIndex(i)->getName()
-        );
-    }
-
     // Running the composed and linked Slang program on device
     // TODO: debug everything below this point, as it causes segfaults!
     rhi::DeviceDesc deviceDesc {
         .deviceType = rhi::DeviceType::Vulkan,
-        // .existingDeviceHandles {{
-        //     {rhi::NativeHandleType::VkInstance, reinterpret_cast<std::uint64_t>(vulkan_data.vk_instance)},
-        //     {rhi::NativeHandleType::VkPhysicalDevice, reinterpret_cast<std::uint64_t>(vulkan_data.vk_physical_device)},
-        //     {rhi::NativeHandleType::VkDevice, reinterpret_cast<std::uint64_t>(vulkan_data.vk_device)}
-        // }},
         .slang {
-            .slangGlobalSession = globalSession,
+            .slangGlobalSession = globalSession.get(),
             .targetProfile = "spirv_1_6"
         },
         .enableValidation = true
     };
 
-    Slang::ComPtr<rhi::IDevice> device {rhi::getRHI()->createDevice(deviceDesc)};
-    if (!device) {
-        std::println("Failed to create Slang RHI device object!");
-        return std::unexpected(mazorca::error_code::invalid);
-    }
-
-    std::vector<slang::IComponentType*> raw_entry_points;
-    raw_entry_points.reserve(entryPoints.size());
-    for (const auto& entry_point : entryPoints) {
-        raw_entry_points.emplace_back(entry_point.get());
+    Slang::ComPtr<rhi::IDevice> device;
+    {
+        SlangResult result = rhi::getRHI()->createDevice(deviceDesc, device.writeRef());
+        if (SLANG_FAILED(result)) {
+            std::println("[{}] [ERROR] Failed to create Slang RHI device object.", mazorca::current_time());   
+            return std::unexpected(mazorca::error_code::invalid);
+        }
     }
 
     rhi::ShaderProgramDesc shader_program_desc {
-        .slangGlobalScope = linkedProgram,
-        .slangEntryPoints = raw_entry_points.data(),
-        .slangEntryPointCount = static_cast<uint32_t>(raw_entry_points.size())
+        .slangGlobalScope = linkedProgram.get()
     };
 
     Slang::ComPtr<rhi::IShaderProgram> shaderProgram;
@@ -200,7 +165,7 @@ mazorca::compile_shader(mazorca::vulkan_data& vulkan_data, const std::filesystem
     }
 
     rhi::ComputePipelineDesc compute_pipeline_desc {
-        .program = shaderProgram
+        .program = shaderProgram.get()
     };
 
     Slang::ComPtr<rhi::IComputePipeline> compute_pipeline;
