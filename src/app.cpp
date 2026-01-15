@@ -120,6 +120,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
     // Main loop
     bool done = false;
+    bool train_neural_net = false;
 
     while (!done) {
         SDL_Event event;
@@ -238,10 +239,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
                         continue;
                     }
 
-                    auto slang_program = mazorca::compile_shader(shader_file_path, globalSession);
-                    if (!slang_program.has_value()) {
-                        shader_compiler_status_message = "Failed to compile shaders!";
-                    }
+                    train_neural_net = true;
 
                 } else {
                     shader_compiler_status_message = "File path to shader file is empty!";
@@ -265,6 +263,17 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
             wd->ClearValue.color.float32[3] = clear_color.w;
             mazorca::FrameRender(vulkan_data, wd, draw_data);
             mazorca::FramePresent(vulkan_data, wd);
+        }
+
+        if (train_neural_net) {
+            train_neural_net = false;
+            auto slang_program = mazorca::compile_shader(vulkan_data, shader_file_path, globalSession);
+            if (!slang_program.has_value()) {
+                shader_compiler_status_message = "Failed to compile shaders!";
+                continue;
+            }
+
+            shader_compiler_status_message = "Compiled neural network!";
         }
     }
 
