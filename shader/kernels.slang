@@ -5,6 +5,7 @@ import mlp_sw;
 import network;
 import adam;
 
+[shader("compute")]
 [numthreads(256, 1, 1)]
 [require(spvGroupNonUniformBallot, spvGroupNonUniformArithmetic)]
 void learnGradient(
@@ -27,6 +28,7 @@ void learnGradient(
     }
 }
 
+[shader("compute")]
 [numthreads(256, 1, 1)]
 void adjustParameters(uint32_t tid : SV_DispatchThreadID, uniform AdamState* states, uniform NFloat* params, uniform NFloat* gradients, uniform uint32_t count)
 {

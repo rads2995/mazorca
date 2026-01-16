@@ -267,7 +267,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
 
         if (train_neural_net) {
             train_neural_net = false;
-            auto slang_program = mazorca::compile_shader(vulkan_data, shader_file_path, globalSession);
+            auto slang_program = mazorca::compile_shader(shader_file_path, globalSession);
             if (!slang_program.has_value()) {
                 shader_compiler_status_message = "Failed to compile shaders!";
                 continue;
