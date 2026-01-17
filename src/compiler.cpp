@@ -1,9 +1,7 @@
 #include "compiler.hpp"
 
-#include <slang-rhi.h>
-
 std::expected<void, mazorca::error_code> 
-mazorca::compile_shader(const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession) {
+mazorca::compile_shader(mazorca::vulkan_data vulkan_data, const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
@@ -79,105 +77,59 @@ mazorca::compile_shader(const std::filesystem::path& shader_file_path, const Sla
     std::unordered_map<std::string, Slang::ComPtr<slang::IComponentType>> linked_program_map;
     linked_program_map.reserve(static_cast<std::size_t>(num_entry_points));
     for (const auto& [name, entry] : entry_point_map) {
-        std::println("[{}] [INFO] Compiling Slang module with entry point name: {}", mazorca::current_time(), name);
-    
-        // Compose the Slang module
-        // Note: the number of components is the number of corresponding Slang modules plus the number of corresponding entry points
-        std::array<slang::IComponentType*, 2> component_types {slangModule, entry};
-        Slang::ComPtr<slang::IComponentType> composed_program;
-        {
-            Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-            SlangResult result = session->createCompositeComponentType(
-                component_types.data(),
-                static_cast<SlangInt>(component_types.size()),
-                composed_program.writeRef(),
-                diagnosticsBlob.writeRef());
-            if (diagnosticsBlob != nullptr) {
-                std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
-            }
-            if (SLANG_FAILED(result)) {
-                std::println("[{}] [ERROR] Failed to create composed Slang program.", mazorca::current_time());
-                return std::unexpected(mazorca::error_code::invalid);
-            }
-        }
+        std::println("[{}] [INFO] Compiling Slang module for entry point name: {}", mazorca::current_time(), name);
 
-        // Link the composed Slang program
+        // For each entry point, compose and link the Slang program 
         Slang::ComPtr<slang::IComponentType> linked_program;
         {
             Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-            SlangResult result = composed_program->link(
+            SlangResult result = entry->link(
                 linked_program.writeRef(),
                 diagnosticsBlob.writeRef());
             if (diagnosticsBlob != nullptr) {
                 std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
             }
             if (SLANG_FAILED(result)) {
-                std::println("[{}] [ERROR] Failed to link the composed Slang program.", mazorca::current_time());   
+                std::println("[{}] [ERROR] Failed to link Slang program with entry point name: {}", mazorca::current_time(), name);   
                 return std::unexpected(mazorca::error_code::invalid);
             }
         }
-    
         linked_program_map.try_emplace(name, std::move(linked_program));
     }
 
-    // Running the composed and linked Slang program on device
-    rhi::DeviceDesc deviceDesc {
-        .deviceType = rhi::DeviceType::Vulkan,
-        .slang {
-            .slangGlobalSession = globalSession.get(),
-            .targetProfile = "spirv_1_6"
-        },
-        .enableValidation = true
-    };
+    // Extract the SPIR-V binary for each of the entry points
+    std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
+    for (const auto& [name, program] : linked_program_map) {
+        std::println("[{}] [INFO] Extracting SPIR-V blob for entry point name: {}", mazorca::current_time(), name);
 
-    Slang::ComPtr<rhi::IDevice> device;
-    {
-        SlangResult result = rhi::getRHI()->createDevice(deviceDesc, device.writeRef());
-        if (SLANG_FAILED(result)) {
-            std::println("[{}] [ERROR] Failed to create Slang RHI device object.", mazorca::current_time());   
-            return std::unexpected(mazorca::error_code::invalid);
-        }
-    }
-
-    for (const auto& [name, linked_program] : linked_program_map) {
-
-        rhi::ShaderProgramDesc shader_program_desc {
-            .slangGlobalScope = linked_program.get()
-        };
-
-        Slang::ComPtr<rhi::IShaderProgram> shader_program;
+        // For each entry point, obtain the entry point SPIR-V binary code
+        Slang::ComPtr<slang::IBlob> spirv_blob;
         {
             Slang::ComPtr<slang::IBlob> diagnosticsBlob;
-            SlangResult result = device->createShaderProgram(
-                shader_program_desc,
-                shader_program.writeRef(),
-                diagnosticsBlob.writeRef()
-            );
+            SlangResult result = program->getEntryPointCode(
+                0,  // Each linked program contains at most one entry point
+                0,  // Each linked program contains at most one target
+                spirv_blob.writeRef(),
+                diagnosticsBlob.writeRef());
             if (diagnosticsBlob != nullptr) {
                 std::println("{}", static_cast<const char*>(diagnosticsBlob->getBufferPointer()));
             }
             if (SLANG_FAILED(result)) {
-                std::println("[{}] [ERROR] Failed to create Slang shader program.", mazorca::current_time());   
+                std::println("[{}] [ERROR] Failed to link Slang program with entry point name: {}", mazorca::current_time(), name);   
                 return std::unexpected(mazorca::error_code::invalid);
             }
         }
-
-        rhi::ComputePipelineDesc compute_pipeline_desc {
-            .program = shader_program.get()
-        };
-
-        Slang::ComPtr<rhi::IComputePipeline> compute_pipeline;
-        {
-            SlangResult result = device->createComputePipeline(
-                compute_pipeline_desc,
-                compute_pipeline.writeRef()
-            );
-            if (SLANG_FAILED(result)) {
-                std::println("[{}] [ERROR] Failed to create Slang compute pipeline.", mazorca::current_time());   
-                return std::unexpected(mazorca::error_code::invalid);
-            }
-        }
+        std::println("[{}] [INFO] Extracted {} bytes for program with entry point name: {}", mazorca::current_time(), spirv_blob->getBufferSize(), name);   
+        spirv_map.try_emplace(name, std::move(spirv_blob));
     }
+    
+    // TODO: Vulkan steps begin here! Setup pipeline, dispatch compute stuff, etc...
+    VkShaderModuleCreateInfo create_info {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pNext = nullptr,
+        .codeSize = spirv_map["learnGradient"]->getBufferSize(),
+        .pCode = reinterpret_cast<const uint32_t *>(spirv_map["learnGradient"]->getBufferPointer())
+    };
 
     return {};
 }

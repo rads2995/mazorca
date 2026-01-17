@@ -26,7 +26,6 @@ target_link_libraries(mazorca
     PRIVATE
         $<BUILD_LOCAL_INTERFACE:imgui::imgui>
         $<BUILD_LOCAL_INTERFACE:slang>
-        $<BUILD_LOCAL_INTERFACE:slang-rhi>
         $<BUILD_LOCAL_INTERFACE:dnnl>
         SDL3::SDL3
         Vulkan::Vulkan
