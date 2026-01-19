@@ -1,7 +1,7 @@
 #include "compiler.hpp"
 
-std::expected<void, mazorca::error_code> 
-mazorca::compile_shader(mazorca::vulkan_data vulkan_data, const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession) {
+std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, mazorca::error_code> 
+mazorca::compile_shader(const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession) {
 
     std::ifstream shader_file(shader_file_path, std::ios::binary);
 
@@ -122,14 +122,5 @@ mazorca::compile_shader(mazorca::vulkan_data vulkan_data, const std::filesystem:
         std::println("[{}] [INFO] Extracted {} bytes for program with entry point name: {}", mazorca::current_time(), spirv_blob->getBufferSize(), name);   
         spirv_map.try_emplace(name, std::move(spirv_blob));
     }
-    
-    // TODO: Vulkan steps begin here! Setup pipeline, dispatch compute stuff, etc...
-    VkShaderModuleCreateInfo create_info {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .pNext = nullptr,
-        .codeSize = spirv_map["learnGradient"]->getBufferSize(),
-        .pCode = reinterpret_cast<const uint32_t *>(spirv_map["learnGradient"]->getBufferPointer())
-    };
-
-    return {};
+    return spirv_map;
 }

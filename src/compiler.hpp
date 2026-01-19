@@ -9,7 +9,7 @@
 namespace mazorca {
 
 [[nodiscard]] 
-std::expected<void, mazorca::error_code>
-compile_shader(mazorca::vulkan_data vulkan_data, const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession);
+std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, mazorca::error_code> 
+compile_shader(const std::filesystem::path& shader_file_path, const Slang::ComPtr<slang::IGlobalSession>& globalSession);
 
 } // namespace mazorca

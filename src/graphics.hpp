@@ -21,6 +21,7 @@ struct vulkan_data {
     ImGui_ImplVulkanH_Window vk_main_window_data;
     std::uint32_t vk_min_image_count;
     bool vk_swap_chain_rebuild;
+    VkDescriptorSetLayout vk_descriptor_set_layout;
 };
 
 void check_vk_result(VkResult err);

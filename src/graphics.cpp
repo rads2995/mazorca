@@ -28,7 +28,6 @@ void mazorca::CleanupVulkanWindow(mazorca::vulkan_data& vulkan_data) {
 
 void mazorca::SetupVulkan(mazorca::vulkan_data& vulkan_data, ImVector<const char*> instance_extensions) {
     VkResult err;
-
     {
         VkInstanceCreateInfo create_info {
             .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
@@ -75,6 +74,11 @@ void mazorca::SetupVulkan(mazorca::vulkan_data& vulkan_data, ImVector<const char
         vkEnumerateDeviceExtensionProperties(vulkan_data.vk_physical_device, nullptr, &properties_count, nullptr);
         properties.resize(properties_count);
         vkEnumerateDeviceExtensionProperties(vulkan_data.vk_physical_device, nullptr, &properties_count, properties.Data);
+
+        // Check for extension to query a 64-bit buffer device address value for a buffer
+        if (mazorca::isExtensionAvailable(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
+            device_extensions.push_back("VK_KHR_buffer_device_address");
+        }
 
         const float queue_priority[] = { 1.0f };
         VkDeviceQueueCreateInfo queue_info[1] = {};

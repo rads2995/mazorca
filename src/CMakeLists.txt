@@ -20,6 +20,8 @@ target_sources(mazorca
         compiler.cpp
         inference.cpp
         app.cpp
+        decoder.cpp
+        vgf/decoder_c_api.cpp
 )
 
 target_link_libraries(mazorca
