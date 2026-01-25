@@ -14,7 +14,7 @@ set(SLANG_ENABLE_SLANG_RHI OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     slang
     GIT_REPOSITORY https://github.com/shader-slang/slang.git
-    GIT_TAG        97c5d06643364a31a94d3358b7b8788defad5ea2 # v2025.24.3
+    GIT_TAG        e4215bc1991f094d795a5da1e1a818d4d347ab04 # v2026.1
     GIT_SHALLOW    TRUE
     GIT_PROGRESS   TRUE
 )

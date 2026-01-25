@@ -1,6 +1,7 @@
 #include "mazorca/mazorca.hpp"
 #include "graphics.hpp"
 #include "compiler.hpp"
+#include "decoder.hpp"
 
 std::expected<void, mazorca::error_code> mazorca::app::run() {
     mazorca::vulkan_data vulkan_data {
@@ -220,7 +221,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() {
         {
             ImGui::Begin("Shader Runtime Compiler (Slang)");
             
-            static std::array<char, 256> input_shader_file_path {""};
+            static std::array<char, 256> input_shader_file_path {"/home/omega/Git/mazorca/shader/kernels.slang"};
             
             ImGui::Text("File path to shader file: ");
             ImGui::SameLine();

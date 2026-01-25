@@ -1,5 +1,5 @@
 /*
- * SPDX-FileCopyrightText: Copyright 2023-2025 Arm Limited and/or its affiliates <open-source-office@arm.com>
+ * SPDX-FileCopyrightText: Copyright 2023-2026 Arm Limited and/or its affiliates <open-source-office@arm.com>
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,10 +23,12 @@ size_t mlsdk_decoder_header_size() { return HeaderSize(); }
 
 size_t mlsdk_decoder_header_decoder_mem_reqs() { return HeaderDecoderSize(); }
 
-mlsdk_decoder_header_decoder *mlsdk_decoder_create_header_decoder(const void *const headerData, void *decoderMemory) {
+mlsdk_decoder_header_decoder *mlsdk_decoder_create_header_decoder(const void *const headerData, const uint64_t size,
+                                                                  void *decoderMemory) {
     assert(headerData != nullptr && "headerData is null");
     assert(decoderMemory != nullptr && "decoderMemory is null");
-    return reinterpret_cast<mlsdk_decoder_header_decoder *>(CreateHeaderDecoderInPlace(headerData, decoderMemory));
+    return reinterpret_cast<mlsdk_decoder_header_decoder *>(
+        CreateHeaderDecoderInPlace(headerData, size, decoderMemory));
 }
 
 bool mlsdk_decoder_is_latest_version(const mlsdk_decoder_header_decoder *const decoder) {
@@ -95,12 +97,12 @@ bool mlsdk_decoder_is_valid_module_table(const void *moduleTableData, const uint
     return VerifyModuleTable(moduleTableData, size);
 }
 
-mlsdk_decoder_module_table_decoder *mlsdk_decoder_create_module_table_decoder(const void *const moduleTableData,
-                                                                              void *decoderMemory) {
+mlsdk_decoder_module_table_decoder *
+mlsdk_decoder_create_module_table_decoder(const void *const moduleTableData, const uint64_t size, void *decoderMemory) {
     assert(moduleTableData != nullptr && "moduleTableData is null");
     assert(decoderMemory != nullptr && "decoderMemory is null");
     return reinterpret_cast<mlsdk_decoder_module_table_decoder *>(
-        CreateModuleTableDecoderInPlace(moduleTableData, decoderMemory));
+        CreateModuleTableDecoderInPlace(moduleTableData, size, decoderMemory));
 }
 
 size_t mlsdk_decoder_get_module_table_num_entries(const mlsdk_decoder_module_table_decoder *const decoder) {
@@ -249,11 +251,12 @@ bool mlsdk_decoder_is_valid_model_sequence(const void *modelSequenceData, const 
 }
 
 mlsdk_decoder_model_sequence_decoder *mlsdk_decoder_create_model_sequence_decoder(const void *const modelSequenceData,
+                                                                                  const uint64_t size,
                                                                                   void *modelSequenceDecoderMemory) {
     assert(modelSequenceData != nullptr && "modelSequenceData is null");
     assert(modelSequenceDecoderMemory != nullptr && "modelSequenceDecoderMemory is null");
     return reinterpret_cast<mlsdk_decoder_model_sequence_decoder *>(
-        CreateModelSequenceTableDecoderInPlace(modelSequenceData, modelSequenceDecoderMemory));
+        CreateModelSequenceTableDecoderInPlace(modelSequenceData, size, modelSequenceDecoderMemory));
 }
 
 size_t mlsdk_decoder_model_sequence_decoder_mem_reqs() { return ModelResourceTableDecoderSize(); }
@@ -366,11 +369,12 @@ bool mlsdk_decoder_is_valid_model_resource_table(const void *modelResourceTableD
 }
 
 mlsdk_decoder_model_resource_table_decoder *
-mlsdk_decoder_create_model_resource_table_decoder(const void *const modelResourceTableData, void *decoderMemory) {
+mlsdk_decoder_create_model_resource_table_decoder(const void *const modelResourceTableData, const uint64_t size,
+                                                  void *decoderMemory) {
     assert(modelResourceTableData != nullptr && "modelResourceTableData is null");
     assert(decoderMemory != nullptr && "decoderMemory is null");
     return reinterpret_cast<mlsdk_decoder_model_resource_table_decoder *>(
-        CreateModelResourceTableDecoderInPlace(modelResourceTableData, decoderMemory));
+        CreateModelResourceTableDecoderInPlace(modelResourceTableData, size, decoderMemory));
 }
 
 size_t mlsdk_decoder_get_model_resource_table_num_entries(
@@ -405,11 +409,12 @@ bool mlsdk_decoder_is_valid_constant_table(const void *constantTableData, const 
 }
 
 mlsdk_decoder_constant_table_decoder *mlsdk_decoder_create_constant_table_decoder(const void *const constantTableData,
+                                                                                  const uint64_t size,
                                                                                   void *constantDecoderMemory) {
     assert(constantTableData != nullptr && "constantTableData is null");
     assert(constantDecoderMemory != nullptr && "constantDecoderMemory is null");
     return reinterpret_cast<mlsdk_decoder_constant_table_decoder *>(
-        CreateConstantDecoderInPlace(constantTableData, constantDecoderMemory));
+        CreateConstantDecoderInPlace(constantTableData, size, constantDecoderMemory));
 }
 
 size_t mlsdk_decoder_constant_table_decoder_mem_reqs() { return ConstantDecoderSize(); }
@@ -432,7 +437,7 @@ uint32_t mlsdk_decoder_constant_table_get_mrt_index(const mlsdk_decoder_constant
 bool mlsdk_decoder_constant_table_is_sparse(const mlsdk_decoder_constant_table_decoder *const constantDecoder,
                                             uint32_t constidx) {
     assert(constantDecoder != nullptr && "constantDecoder is null");
-    return reinterpret_cast<const ConstantDecoder *>(constantDecoder)->getConstantSparsityDimension(constidx) != -1;
+    return reinterpret_cast<const ConstantDecoder *>(constantDecoder)->isSparseConstant(constidx);
 }
 
 int64_t
