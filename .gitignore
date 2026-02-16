@@ -1,6 +1,9 @@
 # Build Directory
 build
 
+# LLVM Directory
+llvm
+
 # Prerequisites
 *.d
 

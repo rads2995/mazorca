@@ -50,7 +50,7 @@ struct grano {
     sycl::context sycl_context;
     sycl::queue sycl_queue;
 
-    grano(const sycl::device& device) 
+    explicit grano(const sycl::device& device) 
     : sycl_device(device),
       sycl_context(sycl_device),
       sycl_queue(sycl_context, sycl_device, mazorca::sycl_async_handler, sycl::property::queue::enable_profiling{}) {}
@@ -66,7 +66,7 @@ struct app {
     
     std::vector<grano> granos;
 
-    app(std::vector<grano>&& granos_) : granos(std::move(granos_)) {}
+    explicit app(std::vector<grano>&& granos_) : granos(std::move(granos_)) {}
 
     [[nodiscard]] std::expected<void, error_code> run();
 };
