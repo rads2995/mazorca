@@ -10,10 +10,8 @@
             "name": "base",
             "hidden": true,
             "description": "Base build configuration",
+            "generator": "Ninja",
             "cacheVariables": {
-                "CMAKE_CXX_STANDARD": "23",
-                "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-                "BUILD_TESTING": false,
                 "CMAKE_C_COMPILER": "icx",
                 "CMAKE_CXX_COMPILER": "icpx"
             }
@@ -23,7 +21,6 @@
             "inherits": "base",
             "displayName": "Debug Configuration",
             "description": "Debug build using Ninja generator",
-            "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/debug",
             "installDir": "{sourceDir}/install/debug",
             "cacheVariables": {
@@ -36,7 +33,6 @@
             "inherits": "base",
             "displayName": "Release Configuration",
             "description": "Release build using Ninja generator",
-            "generator": "Ninja",
             "binaryDir": "${sourceDir}/build/release",
             "installDir": "{sourceDir}/install/release",
             "cacheVariables": {

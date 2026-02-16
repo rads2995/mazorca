@@ -30,13 +30,26 @@ int main() {
     std::println("[{}] [INFO] mazorca GUI application object created.", mazorca::current_time());
 
     // Run mazorca's GUI interface
-    if (auto result = app.run(); !result.has_value()) {
+    auto result = app.run().or_else(
+        [](const mazorca::error_code& error_code){
         std::println(
             "[{}] [ERROR] mazorca application run method returned error code: {}", 
             mazorca::current_time(),
-            std::to_underlying(result.error())
+            std::to_underlying(error_code)
         );
-        return std::to_underlying(result.error());
+        return std::expected<void, mazorca::error_code>(std::unexpect, std::move(error_code));
+        }
+    );
+
+    if(!result.has_value()) {
+        const auto error_code {std::to_underlying(result.error())};
+        std::println(
+            "[{}] [ERROR] mazorca main function returned error code: {}", 
+            mazorca::current_time(),
+            error_code
+        );
+        return error_code;
     }
+    
     std::println("[{}] [INFO] Returning from main function with value 0.", mazorca::current_time());
 }
