@@ -13,7 +13,8 @@
             "generator": "Ninja",
             "cacheVariables": {
                 "CMAKE_C_COMPILER": "icx",
-                "CMAKE_CXX_COMPILER": "icpx"
+                "CMAKE_CXX_COMPILER": "icpx",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
             }
         },
         {

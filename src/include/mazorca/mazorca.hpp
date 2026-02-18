@@ -16,7 +16,7 @@ enum class error_code : int {
 };
 
 // Current point in time for application logging purposes
-inline std::string current_time() {
+[[nodiscard]] inline constexpr std::string current_time() {
     std::time_t time_now {
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())
     };
@@ -31,7 +31,7 @@ inline std::string current_time() {
 }
 
 // SYCL asynchronous exception handler
-inline void sycl_async_handler(sycl::exception_list exceptions) {
+inline constexpr void sycl_async_handler(sycl::exception_list exceptions) {
     for (const std::exception_ptr& e : exceptions) {
         try {
             std::rethrow_exception(e);

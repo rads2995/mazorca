@@ -17,5 +17,6 @@ FetchContent_Declare(
     GIT_TAG        e4215bc1991f094d795a5da1e1a818d4d347ab04 # v2026.1
     GIT_SHALLOW    TRUE
     GIT_PROGRESS   TRUE
+    SYSTEM         TRUE
 )
 FetchContent_MakeAvailable(slang)

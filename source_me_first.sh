@@ -18,6 +18,7 @@ cmake --install ./llvm/build
 
 # Intel's oneAPI DPC++/C++ Compiler for SYCL support
 source /opt/intel/oneapi/setvars.sh
+export PATH="$PATH:/opt/intel/oneapi/compiler/latest/bin/compiler/:/opt/intel/oneapi/debugger/latest/bin"
 
 # Add Unified Runtime's adapters and prepend so that our libur_loader.so is used
 export LD_LIBRARY_PATH=$(pwd)/llvm/build/install/lib:$LD_LIBRARY_PATH
