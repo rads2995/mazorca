@@ -2,8 +2,9 @@
 #include "graphics.hpp"
 #include "compiler.hpp"
 #include "decoder.hpp"
+#include "inference.hpp"
 
-std::expected<void, mazorca::error_code> mazorca::app::run() {
+std::expected<void, mazorca::error_code> mazorca::app::run() const {
     mazorca::vulkan_data vulkan_data {
         .vk_allocator = nullptr,
         .vk_instance = VK_NULL_HANDLE,

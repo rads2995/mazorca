@@ -1,10 +1,11 @@
+#pragma once
+
 #include "mazorca/mazorca.hpp"
 
 #include <unordered_set>
 
-#include <oneapi/dnnl/dnnl.hpp>
-#include <oneapi/dnnl/dnnl_sycl.hpp>
 #include <oneapi/dnnl/dnnl_graph.hpp>
+#include <oneapi/dnnl/dnnl_graph_sycl.hpp>
 
 struct cpu_deletor_t {
     cpu_deletor_t() = default;
@@ -13,7 +14,7 @@ struct cpu_deletor_t {
     }
 };
 
-void set_any_layout(
+inline constexpr void set_any_layout(
         const std::vector<dnnl::graph::partition> &partitions,
         std::unordered_set<size_t> &id_to_set_any_layout) {
     // mapping from output tensor id to the all supported flags of
@@ -78,7 +79,7 @@ void set_any_layout(
     }
 }
 
-void allocate_graph_mem(std::vector<dnnl::graph::tensor> &tensors,
+inline constexpr void allocate_graph_mem(std::vector<dnnl::graph::tensor> &tensors,
         const std::vector<dnnl::graph::logical_tensor> &lts,
         std::vector<std::shared_ptr<void>> &data_buffer,
         std::unordered_map<size_t, dnnl::graph::tensor> &global_outputs_ts_map,
@@ -109,7 +110,7 @@ void allocate_graph_mem(std::vector<dnnl::graph::tensor> &tensors,
     }
 }
 
-std::expected<void, mazorca::error_code> mazorca::grano::nn_example() {
+inline constexpr std::expected<void, mazorca::error_code> nn_example(const mazorca::grano& grano) {
 
     dnnl::graph::logical_tensor::dim N = 8, IC = 3, OC1 = 96, OC2 = 96;
     dnnl::graph::logical_tensor::dim IH = 225, IW = 225, KH1 = 11, KW1 = 11, KH2 = 1, KW2 = 1;

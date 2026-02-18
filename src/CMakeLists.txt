@@ -15,12 +15,7 @@ target_sources(mazorca
         BASE_DIRS ./include
         FILES include/mazorca/mazorca.hpp
     PRIVATE
-        grano.cpp
-        graphics.cpp
-        compiler.cpp
-        inference.cpp
         app.cpp
-        decoder.cpp
         vgf/decoder_c_api.cpp
 )
 
