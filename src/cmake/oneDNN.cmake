@@ -13,7 +13,7 @@ set(ONEDNN_GPU_VENDOR "NONE" CACHE STRING "" FORCE)
 FetchContent_Declare(
     dnnl
     GIT_REPOSITORY https://github.com/uxlfoundation/oneDNN.git
-    GIT_TAG        f1d471933dc852f956fd05389f9313c7148783d5 # v3.10.2
+    GIT_TAG        fc6151651a4577beae5ffac5a4132e75d39e1409 # v3.11
     GIT_SHALLOW    TRUE
     GIT_PROGRESS   TRUE
     SYSTEM         TRUE

@@ -5,7 +5,7 @@
 #include <unordered_set>
 
 #include <oneapi/dnnl/dnnl_graph.hpp>
-#include <oneapi/dnnl/dnnl_graph_sycl.hpp>
+#include <oneapi/dnnl/dnnl_sycl.hpp>
 
 struct cpu_deletor_t {
     cpu_deletor_t() = default;
@@ -110,7 +110,7 @@ inline constexpr void allocate_graph_mem(std::vector<dnnl::graph::tensor> &tenso
     }
 }
 
-inline constexpr std::expected<void, mazorca::error_code> nn_example(const mazorca::grano& grano) {
+inline constexpr std::expected<void, mazorca::error_code> nn_example(mazorca::grano& grano) {
 
     dnnl::graph::logical_tensor::dim N = 8, IC = 3, OC1 = 96, OC2 = 96;
     dnnl::graph::logical_tensor::dim IH = 225, IW = 225, KH1 = 11, KW1 = 11, KH2 = 1, KW2 = 1;
@@ -222,11 +222,11 @@ inline constexpr std::expected<void, mazorca::error_code> nn_example(const mazor
     std::vector<dnnl::graph::partition> partitions = g.get_partitions();
 
     // TODO: running inference on CPU-only for now
-    dnnl::engine engine {dnnl::engine::kind::cpu, 0};
-    dnnl::stream stream {engine};
+    // dnnl::engine engine {dnnl::engine::kind::cpu, 0};
+    // dnnl::stream stream {engine};
     // TODO: When using SYCL for CPU and GPU, TBB throws seg-fault after exiting main thread
-    // dnnl::engine engine {dnnl::sycl_interop::make_engine(this->sycl_device, this->sycl_context)};
-    // dnnl::stream stream {dnnl::sycl_interop::make_stream(engine, this->sycl_queue)};
+    dnnl::engine engine {dnnl::sycl_interop::make_engine(grano.sycl_device, grano.sycl_context)};
+    dnnl::stream stream {dnnl::sycl_interop::make_stream(engine, grano.sycl_queue)};
 
     // Mapping from logical tensor id to output tensors
     std::unordered_map<size_t, dnnl::graph::tensor> global_outputs_ts_map;

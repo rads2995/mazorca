@@ -42,6 +42,7 @@ typedef struct mlsdk_decoder_push_constants_range_decoder_s *mlsdk_decoder_push_
 typedef struct mlsdk_decoder_model_sequence_decoder_s *mlsdk_decoder_model_sequence_decoder;
 typedef struct mlsdk_decoder_model_resource_table_decoder_s *mlsdk_decoder_model_resource_table_decoder;
 typedef struct mlsdk_decoder_constant_table_decoder_s *mlsdk_decoder_constant_table_decoder;
+typedef struct mlsdk_decoder_names_handle_s const *mlsdk_decoder_names_handle;
 
 /**
  * \defgroup VGFCAPI Decoder C API
@@ -226,6 +227,21 @@ MLSDKAPI bool mlsdk_decoder_is_header_valid(const mlsdk_decoder_header_decoder *
 MLSDKAPI bool mlsdk_decoder_is_header_compatible(const mlsdk_decoder_header_decoder *const decoder);
 
 /**
+ * @brief Returns the Major version value from the VGF header
+ */
+MLSDKAPI uint8_t mlsdk_decoder_get_header_major(const mlsdk_decoder_header_decoder *const decoder);
+
+/**
+ * @brief Returns the Minor version value from the VGF header
+ */
+MLSDKAPI uint8_t mlsdk_decoder_get_header_minor(const mlsdk_decoder_header_decoder *const decoder);
+
+/**
+ * @brief Returns the Patch version value from the VGF header
+ */
+MLSDKAPI uint8_t mlsdk_decoder_get_header_patch(const mlsdk_decoder_header_decoder *const decoder);
+
+/**
  * @brief Returns the value of VK_HEADERS_VERSION found in the VGF file
  *
  * @param decoder The header decoder associated to the header data
@@ -262,21 +278,12 @@ MLSDKAPI void mlsdk_decoder_get_header_section_info(const mlsdk_decoder_header_d
 MLSDKAPI size_t mlsdk_decoder_module_table_decoder_mem_reqs();
 
 /**
- * @brief Checks if pointer points to valid module table data
- *
- * @param moduleTableData The pointer to the data
- * @param size The size in bytes of the data
- * @return True if the data is a valid section, false otherwise
- */
-MLSDKAPI bool mlsdk_decoder_is_valid_module_table(const void *moduleTableData, uint64_t size);
-
-/**
  * @brief Creates the module table decoder
  *
  * @param moduleTableData The pointer to the module table data
  * @param size The size in bytes of the module table section
  * @param decoderMemory Memory allocated to be used to create the decoder
- * @return The pointer to the newly created decoder
+ * @return The pointer to the newly created decoder (nullptr if the section is invalid)
  */
 MLSDKAPI mlsdk_decoder_module_table_decoder *
 mlsdk_decoder_create_module_table_decoder(const void *const moduleTableData, uint64_t size, void *decoderMemory);
@@ -332,6 +339,15 @@ MLSDKAPI const char *mlsdk_decoder_get_module_entry_point(const mlsdk_decoder_mo
  */
 MLSDKAPI void mlsdk_decoder_get_module_code(const mlsdk_decoder_module_table_decoder *const decoder, uint32_t idx,
                                             mlsdk_decoder_spirv_code *spirvCode);
+
+/**
+ * @brief Returns true if the module table entry has SPIR-V code
+ *
+ * @param decoder The pointer to the module table decoder
+ * @param idx The index for the entry in the module table
+ * @return True if SPIR-V code is present for the entry
+ */
+MLSDKAPI bool mlsdk_decoder_module_has_spirv(const mlsdk_decoder_module_table_decoder *const decoder, uint32_t idx);
 
 /**********************************************************************************************************************/
 
@@ -433,21 +449,12 @@ mlsdk_decoder_get_push_constant_range_size(const mlsdk_decoder_model_sequence_de
 /**********************************************************************************************************************/
 
 /**
- * @brief Checks if pointer points to valid model sequence data
- *
- * @param modelSequenceData The pointer to the data
- * @param size The size in bytes of the data
- * @return True if the data is a valid section, false otherwise
- */
-MLSDKAPI bool mlsdk_decoder_is_valid_model_sequence(const void *modelSequenceData, uint64_t size);
-
-/**
  * @brief Create the model sequence decoder
  *
  * @param modelSequenceData The pointer to the model sequence data
  * @param size The size in bytes of the model sequence section
  * @param modelSequenceDecoderMemory Memory allocated to be used to create the decoder
- * @return The pointer to the newly created model sequence decoder
+ * @return The pointer to the newly created decoder (nullptr if the section is invalid)
  */
 MLSDKAPI mlsdk_decoder_model_sequence_decoder *
 mlsdk_decoder_create_model_sequence_decoder(const void *const modelSequenceData, uint64_t size,
@@ -593,6 +600,46 @@ mlsdk_decoder_model_sequence_get_input_binding_slot(mlsdk_decoder_model_sequence
 
 MLSDKAPI mlsdk_decoder_binding_slots_handle
 mlsdk_decoder_model_sequence_get_output_binding_slot(mlsdk_decoder_model_sequence_decoder *const modelSequenceDecoder);
+
+/**
+ * @brief Gets the input names handle of model sequence
+ *
+ * @param modelSequenceDecoder The pointer to the model sequence decoder
+ * @return Handle to the names array
+ */
+MLSDKAPI mlsdk_decoder_names_handle
+mlsdk_decoder_model_sequence_get_input_names(mlsdk_decoder_model_sequence_decoder *const modelSequenceDecoder);
+
+/**
+ * @brief Gets the output names handle of model sequence
+ *
+ * @param modelSequenceDecoder The pointer to the model sequence decoder
+ * @return Handle to the names array
+ */
+MLSDKAPI mlsdk_decoder_names_handle
+mlsdk_decoder_model_sequence_get_output_names(mlsdk_decoder_model_sequence_decoder *const modelSequenceDecoder);
+
+/**
+ * @brief Returns the number of names associated with the given handle
+ *
+ * @param modelSequenceDecoder The pointer to the model sequence decoder
+ * @param handle Handle to the names array
+ * @return Number of names
+ */
+MLSDKAPI size_t mlsdk_decoder_model_sequence_get_names_size(
+    const mlsdk_decoder_model_sequence_decoder *const modelSequenceDecoder, mlsdk_decoder_names_handle handle);
+
+/**
+ * @brief Returns the name at the given index
+ *
+ * @param modelSequenceDecoder The pointer to the model sequence decoder
+ * @param handle Handle to the names array
+ * @param nameIdx Index of the name in the array
+ * @return Pointer to the null-terminated name string
+ */
+MLSDKAPI const char *
+mlsdk_decoder_model_sequence_get_name(const mlsdk_decoder_model_sequence_decoder *const modelSequenceDecoder,
+                                      mlsdk_decoder_names_handle handle, uint32_t nameIdx);
 /**
  * @brief Returns the memory requirements in bytes to allocate memory for creating the model resource table decoder
  * @return The size in bytes of the memory needed to create the model resource table decoder
@@ -600,21 +647,12 @@ mlsdk_decoder_model_sequence_get_output_binding_slot(mlsdk_decoder_model_sequenc
 MLSDKAPI size_t mlsdk_decoder_model_resource_table_decoder_mem_reqs();
 
 /**
- * @brief Checks if pointer points to valid model resource table data
- *
- * @param modelResourceTableData The pointer to the data
- * @param size The size in bytes of the data
- * @return True if the data is a valid section, false otherwise
- */
-MLSDKAPI bool mlsdk_decoder_is_valid_model_resource_table(const void *modelResourceTableData, uint64_t size);
-
-/**
  * @brief Create the model resource table decoder
  *
  * @param modelResourceTableData The pointer to the module resource table data
  * @param size The size in bytes of the model resource table section
  * @param decoderMemory Memory allocated to be used to create the decoder
- * @return The pointer to the newly created decoder
+ * @return The pointer to the newly created decoder (nullptr if the section is invalid)
  */
 MLSDKAPI mlsdk_decoder_model_resource_table_decoder *
 mlsdk_decoder_create_model_resource_table_decoder(const void *const modelResourceTableData, uint64_t size,
@@ -685,21 +723,12 @@ MLSDKAPI void mlsdk_decoder_model_resource_table_get_tensor_strides(
 /**********************************************************************************************************************/
 
 /**
- * @brief Checks if pointer points to valid constant table data
- *
- * @param constantTableData The pointer to the data
- * @param size The size in bytes of the data
- * @return True if the data is a valid constant section, false otherwise
- */
-MLSDKAPI bool mlsdk_decoder_is_valid_constant_table(const void *constantTableData, uint64_t size);
-
-/**
  * @brief Create the constant table decoder
  *
  * @param constantTableData The pointer to the constant table data
  * @param size The size in bytes of the constant table data
  * @param constantDecoderMemory Memory allocated to be used to create the decoder
- * @return The pointer to the newly created decoder
+ * @return The pointer to the newly created decoder (nullptr if the section is invalid)
  */
 MLSDKAPI mlsdk_decoder_constant_table_decoder *
 mlsdk_decoder_create_constant_table_decoder(const void *const constantTableData, uint64_t size,

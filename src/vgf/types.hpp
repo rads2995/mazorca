@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 
@@ -14,11 +15,18 @@ constexpr int32_t INT32_MIN_VALUE = std::numeric_limits<int32_t>::min();
 constexpr int32_t INT32_MAX_VALUE = std::numeric_limits<int32_t>::max();
 constexpr int64_t INT64_MIN_VALUE = std::numeric_limits<int64_t>::min();
 constexpr uint32_t UINT32_MAX_VALUE = std::numeric_limits<uint32_t>::max();
+constexpr size_t SIZE_MAX_VALUE = std::numeric_limits<size_t>::max();
 
 constexpr int64_t CONSTANT_INVALID_SPARSITY_DIMENSION = INT64_MIN_VALUE;
 constexpr int64_t CONSTANT_NOT_SPARSE_DIMENSION = -1;
 static_assert(CONSTANT_NOT_SPARSE_DIMENSION > CONSTANT_INVALID_SPARSITY_DIMENSION);
 constexpr uint32_t CONSTANT_INVALID_MRT_INDEX = UINT32_MAX_VALUE;
+
+struct FormatVersion {
+    uint8_t major;
+    uint8_t minor;
+    uint8_t patch;
+};
 
 /// \brief FourCC value
 struct FourCCValue {
