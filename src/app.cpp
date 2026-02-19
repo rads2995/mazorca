@@ -247,6 +247,7 @@ std::expected<void, mazorca::error_code> mazorca::app::run() const {
                         continue;
                     }
 
+                    mazorca::inference(this->granos[sycl_device_index]);
                     shader_compiler_status_message = "Compiled neural network!";
 
                 } else {

@@ -8,11 +8,12 @@
 namespace mazorca {
 
 enum class error_code : int8_t {
-    invalid = 1
+    invalid = 1,
+    unsupported,
 };
 
 // Current point in time for application logging purposes
-[[nodiscard]] inline constexpr std::string current_time() {
+[[nodiscard]] inline constexpr std::string current_time() noexcept {
     std::time_t time_now {
         std::chrono::system_clock::to_time_t(std::chrono::system_clock::now())
     };
@@ -27,7 +28,7 @@ enum class error_code : int8_t {
 }
 
 // SYCL asynchronous exception handler
-inline constexpr void sycl_async_handler(sycl::exception_list exceptions) {
+inline constexpr void sycl_async_handler(sycl::exception_list exceptions) noexcept {
     for (const std::exception_ptr& e : exceptions) {
         try {
             std::rethrow_exception(e);
@@ -44,7 +45,7 @@ struct grano {
 
     const sycl::device sycl_device;
     const sycl::context sycl_context;
-    sycl::queue sycl_queue;
+    mutable sycl::queue sycl_queue;
 
     explicit grano(const sycl::device& device) 
     : sycl_device(device),
@@ -123,11 +124,7 @@ constexpr std::expected<void, mazorca::error_code> mazorca::grano::create_kernel
             << this->sycl_queue.get_device().get_info<sycl::info::device::name>() 
             << '\n'; 
         return std::unexpected(mazorca::error_code::invalid);
-    }
-
-    // Create kernel bundle for current device
-    // TODO: what is the concrete type instead of auto?
-    
+    }   
     
     sycl::kernel_bundle<sycl::bundle_state::ext_oneapi_source>  
     source_bundle = sycl::ext::oneapi::experimental::create_kernel_bundle_from_source(
