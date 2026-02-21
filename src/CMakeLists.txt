@@ -1,6 +1,5 @@
 include(cmake/imgui.cmake)
 include(cmake/slang.cmake)
-include(cmake/oneDNN.cmake)
 
 find_package(SDL3 REQUIRED)
 find_package(Vulkan REQUIRED)
@@ -23,7 +22,6 @@ target_link_libraries(mazorca
     PRIVATE
         $<BUILD_LOCAL_INTERFACE:imgui::imgui>
         $<BUILD_LOCAL_INTERFACE:slang>
-        $<BUILD_LOCAL_INTERFACE:dnnl>
         SDL3::SDL3
         Vulkan::Vulkan
 )

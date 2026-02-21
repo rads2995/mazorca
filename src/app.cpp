@@ -2,7 +2,6 @@
 #include "graphics.hpp"
 #include "compiler.hpp"
 #include "decoder.hpp"
-#include "inference.hpp"
 
 std::expected<void, mazorca::error_code> mazorca::app::run() const {
     mazorca::vulkan_data vulkan_data {
@@ -247,7 +246,6 @@ std::expected<void, mazorca::error_code> mazorca::app::run() const {
                         continue;
                     }
 
-                    mazorca::inference(this->granos[sycl_device_index]);
                     shader_compiler_status_message = "Compiled neural network!";
 
                 } else {
