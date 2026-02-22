@@ -8,5 +8,6 @@ Checks: bugprone-*,
         performance-*,
         portability-*,
         readability-*
+HeaderFilterRegex: '.*/src/.*\.hpp$'
 WarningsAsErrors: '*'
-FormatStyle: google
+FormatStyle: file

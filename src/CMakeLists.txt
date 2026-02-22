@@ -7,6 +7,10 @@ find_package(Vulkan REQUIRED)
 add_library(mazorca STATIC)
 add_library(mazorca::mazorca ALIAS mazorca)
 
+set_target_properties(mazorca PROPERTIES 
+    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR}"
+)
+
 target_sources(mazorca
     PUBLIC
         FILE_SET mazorca_headers
@@ -15,7 +19,6 @@ target_sources(mazorca
         FILES include/mazorca/mazorca.hpp
     PRIVATE
         app.cpp
-        vgf/decoder_c_api.cpp
 )
 
 target_link_libraries(mazorca

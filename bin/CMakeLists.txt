@@ -1,5 +1,8 @@
 add_executable(mazorca_main)
-set_target_properties(mazorca_main PROPERTIES OUTPUT_NAME "mazorca")
+set_target_properties(mazorca_main PROPERTIES 
+    OUTPUT_NAME "mazorca"
+    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR}"
+)
 
 target_sources(mazorca_main
     PRIVATE
