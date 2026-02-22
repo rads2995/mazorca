@@ -14,7 +14,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(mazorca_test)
 
 set_target_properties(mazorca_test PROPERTIES 
-    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR}"
+    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR};--fix-errors"
 )
 
 target_sources(mazorca_test

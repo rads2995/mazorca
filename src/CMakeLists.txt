@@ -8,7 +8,7 @@ add_library(mazorca STATIC)
 add_library(mazorca::mazorca ALIAS mazorca)
 
 set_target_properties(mazorca PROPERTIES 
-    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR}"
+    CXX_CLANG_TIDY "clang-tidy;-p;${CMAKE_BINARY_DIR};--fix-errors"
 )
 
 target_sources(mazorca

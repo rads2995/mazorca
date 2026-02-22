@@ -7,7 +7,7 @@
 
 namespace mazorca {
 
-enum class error_code : int8_t {
+enum class error_code : int {
     invalid = 1,
     unsupported,
 };
