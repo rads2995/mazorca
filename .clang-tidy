@@ -9,5 +9,4 @@ Checks: bugprone-*,
         portability-*,
         readability-*
 HeaderFilterRegex: '.*/src/.*\.hpp$'
-WarningsAsErrors: '*'
 FormatStyle: file

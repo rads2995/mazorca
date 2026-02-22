@@ -5,9 +5,8 @@
 
 namespace mazorca {
 
-[[nodiscard]] 
+[[nodiscard]]
 inline constexpr std::expected<void, mazorca::error_code> decode_graph(const std::filesystem::path& vgf_file_path) {
-    
     std::ifstream vgf_file(vgf_file_path, std::ios::binary);
 
     if (!vgf_file) {
@@ -18,4 +17,4 @@ inline constexpr std::expected<void, mazorca::error_code> decode_graph(const std
     return {};
 }
 
-} // namespace mazorca
+}  // namespace mazorca
