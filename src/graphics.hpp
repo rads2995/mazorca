@@ -24,7 +24,11 @@ struct vulkan_data {
     std::uint32_t vk_min_image_count{};
     bool vk_swap_chain_rebuild{};
     VkDescriptorSetLayout vk_descriptor_set_layout{};
+
+    [[nodiscard]] static constexpr auto setup_vulkan() -> std::expected<void, mazorca::error_code>;
 };
+
+constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> { return {}; }
 
 constexpr void check_vk_result(VkResult err) {
     if (err != VK_SUCCESS) {
@@ -82,8 +86,7 @@ constexpr void SetupVulkan(mazorca::vulkan_data& vulkan_data, ImVector<const cha
     vulkan_data.vk_physical_device = ImGui_ImplVulkanH_SelectPhysicalDevice(vulkan_data.vk_instance);
     if (vulkan_data.vk_physical_device == VK_NULL_HANDLE) {
         std::println(
-            "[{}] [ERROR] Vulkan opaque handle to physical device object points to "
-            "null!",
+            "[{}] [ERROR] Vulkan opaque handle to physical device object points to null!",
             mazorca::current_time());
     }
 

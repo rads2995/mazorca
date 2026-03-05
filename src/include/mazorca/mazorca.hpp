@@ -2,8 +2,9 @@
 
 #include <expected>
 #include <print>
-#include <sycl/sycl.hpp>
 #include <utility>
+
+#include <sycl/sycl.hpp>
 
 namespace mazorca {
 
@@ -44,7 +45,7 @@ struct grano {
     mutable sycl::queue sycl_queue;
 
     explicit grano(sycl::device device)
-        : sycl_device(std::move(device)),
+        : sycl_device(device),
           sycl_context(sycl_device),
           sycl_queue(sycl_context, sycl_device, mazorca::sycl_async_handler,
                      sycl::property::queue::enable_profiling{}) {}

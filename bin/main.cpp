@@ -1,16 +1,22 @@
 #include <expected>
-#include <mazorca/mazorca.hpp>
 #include <print>
-#include <sycl/device.hpp>
-#include <sycl/info/info_desc.hpp>
 #include <utility>
 #include <vector>
+
+#include <mazorca/mazorca.hpp>
+#include <sycl/device.hpp>
+#include <sycl/info/info_desc.hpp>
 
 auto main() -> int {
     // Search all root devices from all SYCL backends available in the system
     const std::vector<sycl::device> sycl_devices{sycl::device::get_devices(sycl::info::device_type::all)};
 
-    std::println("[{}] [INFO] Obtained the following SYCL devices:", mazorca::current_time());
+    if (sycl_devices.empty()) {
+        std::println("[{}] [ERROR] No SYCL devices returned from get_devices method:", mazorca::current_time());
+        return std::to_underlying(mazorca::error_code::invalid);
+    }
+
+    std::println("[{}] [INFO] Obtained the following SYCL devices from get_devices method:", mazorca::current_time());
     for (const auto& device : sycl_devices) {
         std::println("-> {} / {} / {} / SYCL backend version {}.", device.get_info<sycl::info::device::name>(),
                      device.get_info<sycl::info::device::driver_version>(),
@@ -39,7 +45,7 @@ auto main() -> int {
                 "[{}] [ERROR] mazorca application run method returned error "
                 "code: {}",
                 mazorca::current_time(), std::to_underlying(error_code));
-            return std::expected<void, mazorca::error_code>(std::unexpect, std::move(error_code));
+            return std::expected<void, mazorca::error_code>(std::unexpect, error_code);
         });
 
     if (!result.has_value()) {

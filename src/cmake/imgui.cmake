@@ -10,7 +10,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
-add_library(imgui STATIC)
+add_library(imgui SHARED)
 add_library(imgui::imgui ALIAS imgui)
 
 target_sources(imgui
