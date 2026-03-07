@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
+# Compatible with Intel(R) oneAPI DPC++/C++ Compiler version 2025.3
 git clone https://github.com/intel/llvm -b v6.3.0 --depth=1
 cmake -S ./llvm/unified-runtime -B ./llvm/build \
     -DUR_BUILD_EXAMPLES=OFF \

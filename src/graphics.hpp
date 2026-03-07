@@ -1,49 +1,168 @@
 #pragma once
 
+#include <cstdint>
+
+#include "mazorca/mazorca.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
 
-#include <cstdint>
-
-#include "mazorca/mazorca.hpp"
-
 namespace mazorca {
 
-struct vulkan_data {
-    VkAllocationCallbacks* vk_allocator{};
-    VkInstance vk_instance{};
-    VkPhysicalDevice vk_physical_device{};
-    VkDevice vk_device{};
-    std::uint32_t vk_queue_family{};
-    VkQueue vk_queue{};
-    VkPipelineCache vk_pipeline_cache{};
-    VkDescriptorPool vk_descriptor_pool{};
-    ImGui_ImplVulkanH_Window vk_main_window_data;
-    std::uint32_t vk_min_image_count{};
-    bool vk_swap_chain_rebuild{};
-    VkDescriptorSetLayout vk_descriptor_set_layout{};
-
-    [[nodiscard]] static constexpr auto setup_vulkan() -> std::expected<void, mazorca::error_code>;
-};
-
-constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> { return {}; }
-
-constexpr void check_vk_result(VkResult err) {
+constexpr auto check_vk_result(VkResult err) -> void {
     if (err != VK_SUCCESS) {
-        std::println("[vulkan] Error: VkResult = {}", std::to_underlying(err));
+        std::println("[{}] [ERROR] VkResult = {}", mazorca::current_time(), std::to_underlying(err));
     }
 }
 
-[[nodiscard]] constexpr auto isExtensionAvailable(const ImVector<VkExtensionProperties>& properties,
+[[nodiscard]] constexpr auto isExtensionAvailable(const std::vector<VkExtensionProperties>& properties,
                                                   const char* extension) -> bool {
     for (const VkExtensionProperties& property : properties) {
-        if (strcmp(property.extensionName, extension) == 0) {
+        if (std::strcmp(property.extensionName, extension) == 0) {
             return true;
         }
     }
     return false;
+}
+
+struct vulkan_data {
+    VkAllocationCallbacks* vk_allocator{nullptr};
+    VkInstance vk_instance{VK_NULL_HANDLE};
+    VkPhysicalDevice vk_physical_device{VK_NULL_HANDLE};
+    VkDevice vk_device{VK_NULL_HANDLE};
+    std::uint32_t vk_queue_family{static_cast<uint32_t>(-1)};
+    VkQueue vk_queue{VK_NULL_HANDLE};
+    VkPipelineCache vk_pipeline_cache{VK_NULL_HANDLE};
+    VkDescriptorPool vk_descriptor_pool{VK_NULL_HANDLE};
+    ImGui_ImplVulkanH_Window vk_main_window_data;
+    std::uint32_t vk_min_image_count{2};
+    bool vk_swap_chain_rebuild{false};
+    VkDescriptorSetLayout vk_descriptor_set_layout{VK_NULL_HANDLE};
+    
+    explicit vulkan_data() = default;
+    
+    [[nodiscard]] constexpr auto setup_vulkan() -> std::expected<void, mazorca::error_code>;
+};
+
+constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> { 
+    std::vector<const char*> extensions{};
+    {
+        std::uint32_t sdl_extensions_count = 0;
+        const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extensions_count);
+        
+        if (sdl_extensions == nullptr) {
+            std::println("[{}] [ERROR] SDL_Vulkan_GetInstanceExtensions(): {}", mazorca::current_time(), SDL_GetError());
+            return std::unexpected(mazorca::error_code::invalid);
+        }
+
+        extensions.reserve(sdl_extensions_count);
+        for (std::uint32_t n = 0; n < sdl_extensions_count; n++) {
+            extensions.push_back(sdl_extensions[n]);
+        }
+    }
+
+    VkResult err{};
+    {
+        // Enumerate available Vulkan extensions
+        std::uint32_t properties_count = 0;
+        std::vector<VkExtensionProperties> properties{};
+        // If pProperties is nullptr, the number of extensions properties available is returned in pPropertyCount
+        vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
+        properties.resize(properties_count);
+        err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.data());
+        mazorca::check_vk_result(err);
+        
+        // Enable required Vulkan extensions
+        if (mazorca::isExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
+            extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+        }
+
+        VkInstanceCreateInfo const create_info{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+                                               .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                               .ppEnabledExtensionNames = extensions.data()};
+
+        err = vkCreateInstance(&create_info, this->vk_allocator, &this->vk_instance);
+        mazorca::check_vk_result(err);
+    }
+
+    // Select Physical Device (GPU)
+    this->vk_physical_device = ImGui_ImplVulkanH_SelectPhysicalDevice(this->vk_instance);
+    if (this->vk_physical_device == VK_NULL_HANDLE) {
+        std::println(
+            "[{}] [ERROR] Vulkan opaque handle to physical device object points to null!",
+            mazorca::current_time());
+    }
+
+    // Select graphics queue family
+    this->vk_queue_family = ImGui_ImplVulkanH_SelectQueueFamilyIndex(this->vk_physical_device);
+    std::cmp_not_equal(this->vk_queue_family, -1);
+
+    // Create Logical Device (with 1 queue)
+    {
+        std::vector<const char*> device_extensions{};
+        device_extensions.push_back("VK_KHR_swapchain");
+
+        // Enumerate physical device extension
+        std::uint32_t properties_count = 0;
+        std::vector<VkExtensionProperties> properties{};
+        // If pProperties is nullptr, the number of extensions properties available is returned in pPropertyCount
+        vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count, nullptr);
+        properties.resize(properties_count);
+        vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count,
+                                             properties.data());
+
+        // Check for extension to query a 64-bit buffer device address value for a buffer
+        if (mazorca::isExtensionAvailable(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
+            device_extensions.push_back("VK_KHR_buffer_device_address");
+        }
+
+        constexpr std::array<float, 1> queue_priority{1.0F};
+        std::array<VkDeviceQueueCreateInfo, 1> queue_info{{
+            {
+                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                .queueFamilyIndex = this->vk_queue_family,
+                .queueCount = 1,
+                .pQueuePriorities = queue_priority.data()
+            }
+        }};
+
+        VkDeviceCreateInfo const create_info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                                             .queueCreateInfoCount = static_cast<uint32_t>(queue_info.size()),
+                                             .pQueueCreateInfos = queue_info.data(),
+                                             .enabledExtensionCount = static_cast<uint32_t>(device_extensions.size()),
+                                             .ppEnabledExtensionNames = device_extensions.data()};
+
+        err = vkCreateDevice(this->vk_physical_device, &create_info, this->vk_allocator,
+                             &this->vk_device);
+        check_vk_result(err);
+        vkGetDeviceQueue(this->vk_device, this->vk_queue_family, 0, &this->vk_queue);
+    }
+
+    // Create Descriptor Pool
+    // If you wish to load e.g. additional textures you may need to alter pools sizes and maxSets.
+    {
+        std::array<VkDescriptorPoolSize, 1> pool_sizes{
+            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE},
+        };
+        
+        std::uint32_t pool_size_count = 0;
+        for (const VkDescriptorPoolSize& pool_size : pool_sizes) {
+            pool_size_count += pool_size.descriptorCount;
+        }
+
+        VkDescriptorPoolCreateInfo const pool_info{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                                   .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+                                                   .maxSets = pool_size_count,
+                                                   .poolSizeCount = pool_sizes.size(),
+                                                   .pPoolSizes = pool_sizes.data()};
+
+        err = vkCreateDescriptorPool(this->vk_device, &pool_info, this->vk_allocator,
+                                     &this->vk_descriptor_pool);
+        check_vk_result(err);
+    }
+
+    return {}; 
 }
 
 constexpr void CleanupVulkan(mazorca::vulkan_data& vulkan_data) {
@@ -55,101 +174,6 @@ constexpr void CleanupVulkan(mazorca::vulkan_data& vulkan_data) {
 constexpr void CleanupVulkanWindow(mazorca::vulkan_data& vulkan_data) {
     ImGui_ImplVulkanH_DestroyWindow(vulkan_data.vk_instance, vulkan_data.vk_device, &vulkan_data.vk_main_window_data,
                                     vulkan_data.vk_allocator);
-}
-
-constexpr void SetupVulkan(mazorca::vulkan_data& vulkan_data, ImVector<const char*> instance_extensions) {
-    VkResult err;
-    {
-        VkInstanceCreateInfo create_info{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-
-        // Enumerate available extensions
-        std::uint32_t properties_count = 0;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.Data);
-        mazorca::check_vk_result(err);
-
-        // Enable required extensions
-        if (mazorca::isExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
-            instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
-        }
-
-        // Create Vulkan Instance
-        create_info.enabledExtensionCount = static_cast<uint32_t>(instance_extensions.Size);
-        create_info.ppEnabledExtensionNames = instance_extensions.Data;
-        err = vkCreateInstance(&create_info, vulkan_data.vk_allocator, &vulkan_data.vk_instance);
-        mazorca::check_vk_result(err);
-    }
-
-    // Select Physical Device (GPU)
-    vulkan_data.vk_physical_device = ImGui_ImplVulkanH_SelectPhysicalDevice(vulkan_data.vk_instance);
-    if (vulkan_data.vk_physical_device == VK_NULL_HANDLE) {
-        std::println(
-            "[{}] [ERROR] Vulkan opaque handle to physical device object points to null!",
-            mazorca::current_time());
-    }
-
-    // Select graphics queue family
-    vulkan_data.vk_queue_family = ImGui_ImplVulkanH_SelectQueueFamilyIndex(vulkan_data.vk_physical_device);
-    IM_ASSERT(std::cmp_not_equal(vulkan_data.vk_queue_family, -1));
-
-    // Create Logical Device (with 1 queue)
-    {
-        ImVector<const char*> device_extensions;
-        device_extensions.push_back("VK_KHR_swapchain");
-
-        // Enumerate physical device extension
-        std::uint32_t properties_count = 0;
-        ImVector<VkExtensionProperties> properties;
-        vkEnumerateDeviceExtensionProperties(vulkan_data.vk_physical_device, nullptr, &properties_count, nullptr);
-        properties.resize(properties_count);
-        vkEnumerateDeviceExtensionProperties(vulkan_data.vk_physical_device, nullptr, &properties_count,
-                                             properties.Data);
-
-        // Check for extension to query a 64-bit buffer device address value for a
-        // buffer
-        if (mazorca::isExtensionAvailable(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
-            device_extensions.push_back("VK_KHR_buffer_device_address");
-        }
-
-        const float queue_priority[] = {1.0F};
-        VkDeviceQueueCreateInfo queue_info[1] = {};
-        queue_info[0].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-        queue_info[0].queueFamilyIndex = vulkan_data.vk_queue_family;
-        queue_info[0].queueCount = 1;
-        queue_info[0].pQueuePriorities = queue_priority;
-        VkDeviceCreateInfo create_info = {};
-        create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-        create_info.queueCreateInfoCount = std::size(queue_info);
-        create_info.pQueueCreateInfos = queue_info;
-        create_info.enabledExtensionCount = static_cast<std::uint32_t>(device_extensions.Size);
-        create_info.ppEnabledExtensionNames = device_extensions.Data;
-        err = vkCreateDevice(vulkan_data.vk_physical_device, &create_info, vulkan_data.vk_allocator,
-                             &vulkan_data.vk_device);
-        check_vk_result(err);
-        vkGetDeviceQueue(vulkan_data.vk_device, vulkan_data.vk_queue_family, 0, &vulkan_data.vk_queue);
-    }
-
-    // Create Descriptor Pool
-    // If you wish to load e.g. additional textures you may need to alter pools sizes and maxSets.
-    {
-        VkDescriptorPoolSize pool_sizes[] = {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE},
-        };
-        VkDescriptorPoolCreateInfo pool_info = {};
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 0;
-        for (VkDescriptorPoolSize const& pool_size : pool_sizes) {
-            pool_info.maxSets += pool_size.descriptorCount;
-        }
-        pool_info.poolSizeCount = std::size(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-        err = vkCreateDescriptorPool(vulkan_data.vk_device, &pool_info, vulkan_data.vk_allocator,
-                                     &vulkan_data.vk_descriptor_pool);
-        check_vk_result(err);
-    }
 }
 
 // All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
