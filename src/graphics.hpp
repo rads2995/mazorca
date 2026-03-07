@@ -1,12 +1,13 @@
 #pragma once
 
-#include <cstdint>
-
-#include "mazorca/mazorca.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <backends/imgui_impl_sdl3.h>
 #include <backends/imgui_impl_vulkan.h>
+
+#include <cstdint>
+
+#include "mazorca/mazorca.hpp"
 
 namespace mazorca {
 
@@ -39,20 +40,30 @@ struct vulkan_data {
     std::uint32_t vk_min_image_count{2};
     bool vk_swap_chain_rebuild{false};
     VkDescriptorSetLayout vk_descriptor_set_layout{VK_NULL_HANDLE};
-    
+
     explicit vulkan_data() = default;
-    
+
     [[nodiscard]] constexpr auto setup_vulkan() -> std::expected<void, mazorca::error_code>;
+
+    [[nodiscard]] constexpr auto cleanup_vulkan() const -> std::expected<void, mazorca::error_code>;
+
+    [[nodiscard]] constexpr auto cleanup_vulkan_window(ImGui_ImplVulkanH_Window* window_data) const
+        -> std::expected<void, mazorca::error_code>;
+
+    [[nodiscard]] constexpr auto setup_vulkan_window(ImGui_ImplVulkanH_Window* window_data, VkSurfaceKHR surface,
+                                                     int width, int height) const
+        -> std::expected<void, mazorca::error_code>;
 };
 
-constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> { 
+constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> {
     std::vector<const char*> extensions{};
     {
         std::uint32_t sdl_extensions_count = 0;
         const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extensions_count);
-        
+
         if (sdl_extensions == nullptr) {
-            std::println("[{}] [ERROR] SDL_Vulkan_GetInstanceExtensions(): {}", mazorca::current_time(), SDL_GetError());
+            std::println("[{}] [ERROR] SDL_Vulkan_GetInstanceExtensions(): {}", mazorca::current_time(),
+                         SDL_GetError());
             return std::unexpected(mazorca::error_code::invalid);
         }
 
@@ -72,7 +83,7 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
         properties.resize(properties_count);
         err = vkEnumerateInstanceExtensionProperties(nullptr, &properties_count, properties.data());
         mazorca::check_vk_result(err);
-        
+
         // Enable required Vulkan extensions
         if (mazorca::isExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
             extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
@@ -89,9 +100,8 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
     // Select Physical Device (GPU)
     this->vk_physical_device = ImGui_ImplVulkanH_SelectPhysicalDevice(this->vk_instance);
     if (this->vk_physical_device == VK_NULL_HANDLE) {
-        std::println(
-            "[{}] [ERROR] Vulkan opaque handle to physical device object points to null!",
-            mazorca::current_time());
+        std::println("[{}] [ERROR] Vulkan opaque handle to physical device object points to null!",
+                     mazorca::current_time());
     }
 
     // Select graphics queue family
@@ -109,8 +119,7 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
         // If pProperties is nullptr, the number of extensions properties available is returned in pPropertyCount
         vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count, nullptr);
         properties.resize(properties_count);
-        vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count,
-                                             properties.data());
+        vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count, properties.data());
 
         // Check for extension to query a 64-bit buffer device address value for a buffer
         if (mazorca::isExtensionAvailable(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
@@ -118,14 +127,10 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
         }
 
         constexpr std::array<float, 1> queue_priority{1.0F};
-        std::array<VkDeviceQueueCreateInfo, 1> queue_info{{
-            {
-                .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-                .queueFamilyIndex = this->vk_queue_family,
-                .queueCount = 1,
-                .pQueuePriorities = queue_priority.data()
-            }
-        }};
+        std::array<VkDeviceQueueCreateInfo, 1> queue_info{{{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                            .queueFamilyIndex = this->vk_queue_family,
+                                                            .queueCount = 1,
+                                                            .pQueuePriorities = queue_priority.data()}}};
 
         VkDeviceCreateInfo const create_info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queue_info.size()),
@@ -133,8 +138,7 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
                                              .enabledExtensionCount = static_cast<uint32_t>(device_extensions.size()),
                                              .ppEnabledExtensionNames = device_extensions.data()};
 
-        err = vkCreateDevice(this->vk_physical_device, &create_info, this->vk_allocator,
-                             &this->vk_device);
+        err = vkCreateDevice(this->vk_physical_device, &create_info, this->vk_allocator, &this->vk_device);
         check_vk_result(err);
         vkGetDeviceQueue(this->vk_device, this->vk_queue_family, 0, &this->vk_queue);
     }
@@ -145,7 +149,7 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
         std::array<VkDescriptorPoolSize, 1> pool_sizes{
             {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, IMGUI_IMPL_VULKAN_MINIMUM_IMAGE_SAMPLER_POOL_SIZE},
         };
-        
+
         std::uint32_t pool_size_count = 0;
         for (const VkDescriptorPoolSize& pool_size : pool_sizes) {
             pool_size_count += pool_size.descriptorCount;
@@ -157,56 +161,59 @@ constexpr auto vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error
                                                    .poolSizeCount = pool_sizes.size(),
                                                    .pPoolSizes = pool_sizes.data()};
 
-        err = vkCreateDescriptorPool(this->vk_device, &pool_info, this->vk_allocator,
-                                     &this->vk_descriptor_pool);
+        err = vkCreateDescriptorPool(this->vk_device, &pool_info, this->vk_allocator, &this->vk_descriptor_pool);
         check_vk_result(err);
     }
 
-    return {}; 
+    return {};
 }
 
-constexpr void CleanupVulkan(mazorca::vulkan_data& vulkan_data) {
-    vkDestroyDescriptorPool(vulkan_data.vk_device, vulkan_data.vk_descriptor_pool, vulkan_data.vk_allocator);
-    vkDestroyDevice(vulkan_data.vk_device, vulkan_data.vk_allocator);
-    vkDestroyInstance(vulkan_data.vk_instance, vulkan_data.vk_allocator);
+constexpr auto mazorca::vulkan_data::cleanup_vulkan() const -> std::expected<void, mazorca::error_code> {
+    vkDestroyDescriptorPool(this->vk_device, this->vk_descriptor_pool, this->vk_allocator);
+    vkDestroyDevice(this->vk_device, this->vk_allocator);
+    vkDestroyInstance(this->vk_instance, this->vk_allocator);
+
+    return {};
 }
 
-constexpr void CleanupVulkanWindow(mazorca::vulkan_data& vulkan_data) {
-    ImGui_ImplVulkanH_DestroyWindow(vulkan_data.vk_instance, vulkan_data.vk_device, &vulkan_data.vk_main_window_data,
-                                    vulkan_data.vk_allocator);
+constexpr auto mazorca::vulkan_data::cleanup_vulkan_window(ImGui_ImplVulkanH_Window* window_data) const
+    -> std::expected<void, mazorca::error_code> {
+    ImGui_ImplVulkanH_DestroyWindow(this->vk_instance, this->vk_device, window_data, this->vk_allocator);
+
+    return {};
 }
 
-// All the ImGui_ImplVulkanH_XXX structures/functions are optional helpers used by the demo.
-// Your real engine/app may not use them.
-constexpr void SetupVulkanWindow(mazorca::vulkan_data& vulkan_data, ImGui_ImplVulkanH_Window* wd, VkSurfaceKHR surface,
-                                 int width, int height) {
-    wd->Surface = surface;
+constexpr auto mazorca::vulkan_data::setup_vulkan_window(ImGui_ImplVulkanH_Window* window_data, VkSurfaceKHR surface,
+                                                         int width, int height) const
+    -> std::expected<void, mazorca::error_code> {
+    window_data->Surface = surface;
 
     // Check for WSI support
     VkBool32 res = 0;
-    vkGetPhysicalDeviceSurfaceSupportKHR(vulkan_data.vk_physical_device, vulkan_data.vk_queue_family, wd->Surface,
-                                         &res);
+    vkGetPhysicalDeviceSurfaceSupportKHR(this->vk_physical_device, this->vk_queue_family, window_data->Surface, &res);
+
     if (res != VK_TRUE) {
         std::println("[{}] [ERROR] no WSI support on physical device.", mazorca::current_time());
-        return;
     }
 
     // Select surface format
-    const VkFormat requestSurfaceImageFormat[] = {VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM,
-                                                  VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
-    const VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
-    wd->SurfaceFormat =
-        ImGui_ImplVulkanH_SelectSurfaceFormat(vulkan_data.vk_physical_device, wd->Surface, requestSurfaceImageFormat,
-                                              std::size(requestSurfaceImageFormat), requestSurfaceColorSpace);
+    constexpr std::array<VkFormat, 4> requestSurfaceImageFormat{VK_FORMAT_B8G8R8A8_UNORM, VK_FORMAT_R8G8B8A8_UNORM,
+                                                                VK_FORMAT_B8G8R8_UNORM, VK_FORMAT_R8G8B8_UNORM};
+    constexpr VkColorSpaceKHR requestSurfaceColorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+    window_data->SurfaceFormat = ImGui_ImplVulkanH_SelectSurfaceFormat(
+        this->vk_physical_device, window_data->Surface, requestSurfaceImageFormat.data(),
+        requestSurfaceImageFormat.size(), requestSurfaceColorSpace);
 
-    VkPresentModeKHR const present_modes[] = {VK_PRESENT_MODE_FIFO_KHR};
-    wd->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(vulkan_data.vk_physical_device, wd->Surface,
-                                                          &present_modes[0], std::size(present_modes));
+    constexpr std::array<VkPresentModeKHR, 1> present_modes{VK_PRESENT_MODE_FIFO_KHR};
+    window_data->PresentMode = ImGui_ImplVulkanH_SelectPresentMode(this->vk_physical_device, window_data->Surface,
+                                                                   present_modes.data(), present_modes.size());
 
-    IM_ASSERT(vulkan_data.vk_min_image_count >= 2);
-    ImGui_ImplVulkanH_CreateOrResizeWindow(vulkan_data.vk_instance, vulkan_data.vk_physical_device,
-                                           vulkan_data.vk_device, wd, vulkan_data.vk_queue_family,
-                                           vulkan_data.vk_allocator, width, height, vulkan_data.vk_min_image_count, 0);
+    IM_ASSERT(this->vk_min_image_count >= 2);
+    ImGui_ImplVulkanH_CreateOrResizeWindow(this->vk_instance, this->vk_physical_device, this->vk_device, window_data,
+                                           this->vk_queue_family, this->vk_allocator, width, height,
+                                           this->vk_min_image_count, 0);
+
+    return {};
 }
 
 constexpr void FrameRender(mazorca::vulkan_data& vulkan_data, ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data) {
