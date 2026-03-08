@@ -17,10 +17,22 @@ constexpr auto check_vk_result(VkResult err) -> void {
     }
 }
 
-[[nodiscard]] constexpr auto isExtensionAvailable(const std::vector<VkExtensionProperties>& properties,
-                                                  const char* extension) -> bool {
+[[nodiscard]] constexpr auto is_extension_available(const std::vector<VkExtensionProperties>& properties,
+                                                    const char* extension) -> bool {
     for (const VkExtensionProperties& property : properties) {
         if (std::strcmp(property.extensionName, extension) == 0) {
+            std::println("[{}] [INFO] Vulkan extension found: {}", mazorca::current_time(), property.extensionName);
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr auto is_layer_available(const std::vector<VkLayerProperties>& properties,
+                                                const char* layer) -> bool {
+    for (const VkLayerProperties& property : properties) {
+        if (std::strcmp(property.layerName, layer) == 0) {
+            std::println("[{}] [INFO] Vulkan validation layer found: {}", mazorca::current_time(), property.layerName);
             return true;
         }
     }
@@ -63,6 +75,7 @@ struct vulkan_data {
 
 constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazorca::error_code> {
     std::vector<const char*> extensions{};
+    std::vector<const char*> enabled_validation_layers{};
     {
         std::uint32_t sdl_extensions_count = 0;
         const char* const* sdl_extensions = SDL_Vulkan_GetInstanceExtensions(&sdl_extensions_count);
@@ -81,6 +94,23 @@ constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazor
 
     VkResult err{};
     {
+        // Enumerate available Vulkan validation layers
+        std::uint32_t layers_count = 0;
+        std::vector<VkLayerProperties> layer_properties{};
+        // If pProperties is nullptr, the number of layer properties available is returned in pPropertyCount
+        vkEnumerateInstanceLayerProperties(&layers_count, nullptr);
+        layer_properties.resize(layers_count);
+        err = vkEnumerateInstanceLayerProperties(&layers_count, layer_properties.data());
+        mazorca::check_vk_result(err);
+
+        // Enable Vulkan validation layers
+        #ifdef _DEBUG
+        constexpr const char* validation_layer{"VK_LAYER_KHRONOS_validation"};
+        if (mazorca::is_layer_available(layer_properties, validation_layer)) {
+            enabled_validation_layers.push_back(validation_layer);
+        }
+        #endif
+
         // Enumerate available Vulkan extensions
         std::uint32_t properties_count = 0;
         std::vector<VkExtensionProperties> properties{};
@@ -91,12 +121,14 @@ constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazor
         mazorca::check_vk_result(err);
 
         // Enable required Vulkan extensions
-        if (mazorca::isExtensionAvailable(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
+        if (mazorca::is_extension_available(properties, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
             extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
         }
 
         VkInstanceCreateInfo const create_info{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-                                               .enabledExtensionCount = static_cast<uint32_t>(extensions.size()),
+                                               .enabledLayerCount = static_cast<std::uint32_t>(enabled_validation_layers.size()),
+                                               .ppEnabledLayerNames = enabled_validation_layers.data(),
+                                               .enabledExtensionCount = static_cast<std::uint32_t>(extensions.size()),
                                                .ppEnabledExtensionNames = extensions.data()};
 
         err = vkCreateInstance(&create_info, this->vk_allocator, &this->vk_instance);
@@ -128,7 +160,7 @@ constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazor
         vkEnumerateDeviceExtensionProperties(this->vk_physical_device, nullptr, &properties_count, properties.data());
 
         // Check for extension to query a 64-bit buffer device address value for a buffer
-        if (mazorca::isExtensionAvailable(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
+        if (mazorca::is_extension_available(properties, VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME)) {
             device_extensions.push_back("VK_KHR_buffer_device_address");
         }
 

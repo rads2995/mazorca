@@ -52,12 +52,12 @@ auto mazorca::app::run() const -> std::expected<void, mazorca::error_code> {
         return std::unexpected(mazorca::error_code::invalid);
     }
 
-    int w = 0;
-    int h = 0;
-    SDL_GetWindowSize(window, &w, &h);
+    int width = 0;
+    int height = 0;
+    SDL_GetWindowSize(window, &width, &height);
     ImGui_ImplVulkanH_Window* window_data = &vulkan_data.vk_main_window_data;
 
-    vulkan_data.setup_vulkan_window(window_data, surface, w, h);
+    vulkan_data.setup_vulkan_window(window_data, surface, width, height);
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 

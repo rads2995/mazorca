@@ -12,16 +12,6 @@ namespace mazorca {
 constexpr auto compile_shader(const std::filesystem::path& shader_file_path,
                               const Slang::ComPtr<slang::IGlobalSession>& globalSession)
     -> std::expected<std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>>, mazorca::error_code> {
-    std::ifstream shader_file(shader_file_path, std::ios::binary);
-
-    if (!shader_file) {
-        std::println("[{}] [ERROR] Unable to read shader file: {}", current_time(), shader_file_path.string());
-        return std::unexpected(mazorca::error_code::invalid);
-    }
-
-    // Read shader source to string for Slang shader compiler
-    std::string const shader_source{std::istreambuf_iterator<char>(shader_file), std::istreambuf_iterator<char>()};
-
     // List of enabled compilation targets
     slang::TargetDesc const targetDesc{.format = SLANG_SPIRV, .profile = globalSession->findProfile("spirv_1_6")};
 
