@@ -247,8 +247,8 @@ auto mazorca::app::run() const -> std::expected<void, mazorca::error_code> {
             window_data->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
             window_data->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
             window_data->ClearValue.color.float32[3] = clear_color.w;
-            FrameRender(vulkan_data, window_data, draw_data);
-            FramePresent(vulkan_data, window_data);
+            vulkan_data.render_frame(window_data, draw_data);
+            vulkan_data.present_frame(window_data);
         }
     }
 
