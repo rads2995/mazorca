@@ -114,8 +114,13 @@ auto mazorca::app::run() const -> std::expected<void, mazorca::error_code> {
         sycl_device_names.emplace_back(grano.sycl_device.get_info<sycl::info::device::name>());
     }
     int sycl_device_index = 0;
-    std::string shader_compiler_status_message{"OK"};
 
+    std::array<char, 256> input_kernel_bundle_file_path{""};
+    std::string kernel_bundle_status_message{"OK"};
+
+    std::array<char, 256> input_shader_file_path{"/home/omega/Git/mazorca/shader/triangle.slang"};
+    std::string shader_compiler_status_message{"OK"};
+    
     // Main loop
     bool done = false;
 
@@ -169,9 +174,6 @@ auto mazorca::app::run() const -> std::expected<void, mazorca::error_code> {
                 },
                 &sycl_device_names, sycl_device_names.size());
 
-            static std::array<char, 256> input_kernel_bundle_file_path{""};
-            static std::string kernel_bundle_status_message{"OK"};
-
             ImGui::Text("File path to SYCL kernel bundle: ");
             ImGui::SameLine();
             ImGui::InputText("##sycl_path", input_kernel_bundle_file_path.data(), input_kernel_bundle_file_path.size());
@@ -206,9 +208,6 @@ auto mazorca::app::run() const -> std::expected<void, mazorca::error_code> {
 
         {
             ImGui::Begin("Shader Runtime Compiler (Slang)");
-
-            static std::array<char, 256> input_shader_file_path{"/home/omega/Git/mazorca/shader/kernels.slang"};
-
             ImGui::Text("File path to shader file: ");
             ImGui::SameLine();
             ImGui::InputText("##slang_path", input_shader_file_path.data(), input_shader_file_path.size());

@@ -17,17 +17,6 @@ constexpr auto check_vk_result(VkResult err) -> void {
     }
 }
 
-[[nodiscard]] constexpr auto is_extension_available(const std::vector<VkExtensionProperties>& properties,
-                                                    const char* extension) -> bool {
-    for (const VkExtensionProperties& property : properties) {
-        if (std::strcmp(property.extensionName, extension) == 0) {
-            std::println("[{}] [INFO] Vulkan extension found: {}", mazorca::current_time(), property.extensionName);
-            return true;
-        }
-    }
-    return false;
-}
-
 struct vulkan_data {
     VkAllocationCallbacks* vk_allocator{nullptr};
     VkInstance vk_instance{VK_NULL_HANDLE};
@@ -216,7 +205,11 @@ constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazor
                                                             .queueCount = 1,
                                                             .pQueuePriorities = queue_priority.data()}}};
 
+        VkPhysicalDeviceVulkan13Features vulkan_13_features{
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES, .dynamicRendering = 1U};
+
         VkDeviceCreateInfo const create_info{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                                             .pNext = &vulkan_13_features,
                                              .queueCreateInfoCount = static_cast<uint32_t>(queue_info.size()),
                                              .pQueueCreateInfos = queue_info.data(),
                                              .enabledExtensionCount = static_cast<uint32_t>(device_extensions.size()),
