@@ -45,7 +45,7 @@ struct grano {
     mutable sycl::queue sycl_queue;
 
     explicit grano(sycl::device device)
-        : sycl_device(device),
+        : sycl_device(std::move(device)),
           sycl_context(sycl_device),
           sycl_queue(sycl_context, sycl_device, mazorca::sycl_async_handler,
                      sycl::property::queue::enable_profiling{}) {}
@@ -90,7 +90,7 @@ constexpr auto mazorca::grano::work() -> std::expected<void, mazorca::error_code
 
     this->sycl_queue
         .submit([&](sycl::handler& h) -> void {
-            h.parallel_for(sycl::range<1>(size), [=](sycl::id<1> idx) -> void { C[idx] = A[idx] + B[idx]; });
+            h.parallel_for(sycl::range<1>(size), [=](sycl::id<1> idx) -> void { C[idx] = A[idx] + B[idx]; }); // NOLINT
         })
         .wait();
 

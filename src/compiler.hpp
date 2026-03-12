@@ -51,7 +51,7 @@ constexpr auto compile_shader(const std::filesystem::path& shader_file_path,
     }
 
     // Identify number and names of entry points, compile/link them, store them in SPIR-V map object
-    std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map;
+    std::unordered_map<std::string, Slang::ComPtr<slang::IBlob>> spirv_map{};
     {
         SlangInt32 const num_entry_points = slangModule->getDefinedEntryPointCount();
         for (SlangInt32 i = 0; i < num_entry_points; i++) {

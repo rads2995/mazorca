@@ -155,6 +155,8 @@ constexpr auto mazorca::vulkan_data::setup_vulkan() -> std::expected<void, mazor
 
             vkGetPhysicalDeviceProperties2(gpu_device, &device_properties);
             if (device_properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+                std::println("[{}] [INFO] Vulkan physical device enabled: {}", mazorca::current_time(),
+                             device_properties.properties.deviceName);
                 this->vk_physical_device = gpu_device;
                 break;
             }
